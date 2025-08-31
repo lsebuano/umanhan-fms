@@ -1,0 +1,47 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+using Umanhan.Models.Entities;
+using Umanhan.Models.Models;
+
+namespace Umanhan.Models.Dtos
+{
+    public class PricingDto
+    {
+        public Guid PricingId { get; set; }
+
+        public Guid FarmId { get; set; }
+
+        public Guid ProfileId { get; set; }
+
+        public string FarmName { get; set; }
+
+        public Guid ConditionTypeId { get; set; }
+
+        public string ConditionType { get; set; }
+
+        public bool ConditionIsDeduction { get; set; }
+
+        public string ConditionIsDeductionString => ConditionIsDeduction ? "Deduction" : "Addition";
+
+        public decimal Value { get; set; }
+
+        public string ApplyType { get; set; }
+
+        public int Sequence { get; set; }
+
+        public string ProfileName { get; set; }
+
+        public string ProfileDescription { get; set; }
+
+        public decimal Before { get; set; }
+        public decimal Delta { get; set; }
+        public decimal After { get; set; }
+
+        public string Symbol => ConditionIsDeduction ? "-" : "+";
+        public string Suffix => ApplyType.Equals("PERCENTAGE", StringComparison.OrdinalIgnoreCase) ? "%" : "";
+    }
+}

@@ -1,0 +1,29 @@
+﻿@page "/login-callback"
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject WebAppSetting Settings
+
+<RemoteAuthenticatorView Action="@Action">
+    <LogOut>
+        @{
+            NavigationManager.NavigateTo(cognitoLogoutUrl, true);
+        }
+    </LogOut>
+</RemoteAuthenticatorView>
+
+@code {
+    [Parameter] public string? Action { get; set; }
+
+    private string cognitoLogoutUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //cognitoLogoutUrl = ConfigurationService.LogoutUrl;
+        cognitoLogoutUrl = Settings.LogoutUrl;
+
+        //Console.WriteLine($"Login Callback:Cognito Logout URL: {cognitoLogoutUrl}");
+        NavigationManager.NavigateTo(cognitoLogoutUrl, true);
+        await InvokeAsync(StateHasChanged);
+    }
+}

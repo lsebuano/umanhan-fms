@@ -1,0 +1,58 @@
+﻿@attribute [Authorize]
+@inject NavigationManager NavigationManager
+@inject WebAppSettingService AppSettingService
+
+<PermissionView Permission="Farm.Read">
+    <ChildContent>
+        <RadzenRow class="rz-mb-5">
+            <RadzenColumn SizeMD="10">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                    <RadzenIcon Icon="nest_eco_leaf" class="umh-f-3rem" />
+                    <RadzenText TextStyle="TextStyle.H5" Visible="@(!string.IsNullOrEmpty(farmName))" class="umh-margin-0">@farmName</RadzenText>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="2">
+
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenStack class="rz-mb-5">
+            <RadzenAlert AllowClose="false" AlertStyle="AlertStyle.Warning" Variant="Variant.Flat" Shade="Shade.Lighter">
+                Unable to load configuration. Please contact your system administrator.
+            </RadzenAlert>
+
+            <div class="d-flex justify-center items-center min-h-screen">
+                <RadzenCard class="umh-section-content">
+                    <div class="mb-4">
+                        <RadzenImage AlternateText="Umanhan" Path="images/umanhan_logo_225x225_no_text_100.png" class="umh-width-150px rz-mb-5" />
+                        <RadzenText TextStyle="TextStyle.DisplayH2" class="rz-color-base-800 poppins-semibold umh-mb-n15px">umanhan</RadzenText>
+                        <RadzenText TextStyle="TextStyle.DisplayH4" class="rz-color-base-600 poppins-regular rz-mb-10">Farm Management System</RadzenText>
+                        <RadzenText TextStyle="TextStyle.DisplayH6" class="rz-color-base-800">Let's help you set up your farm so you can start planning, planting, and tracking operations effectively.</RadzenText>
+                    </div>
+                </RadzenCard>
+            </div>
+        </RadzenStack>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    private string farmName = "Loading...";
+    private Guid farmId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    async Task LoadSettings()
+    {
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Settings.FarmId;
+        farmName = Settings.FarmName;
+    }
+}

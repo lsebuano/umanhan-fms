@@ -1,0 +1,329 @@
+﻿@page "/farm-activities"
+@using Microsoft.AspNetCore.WebUtilities
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject FarmActivityService FarmActivityService
+@inject AppNotificationService NotificationService
+@inject SystemSettingService SystemSettingService
+@inject NavigationManager NavigationManager
+@inject WebAppSettingService AppSettingService
+@inject UserStateService UserState
+@inject WebAppSetting Setting
+
+<PermissionView Permission="Farm.Full">
+    <ChildContent>
+        <PageTitle>Farm Activities</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/farm-activities" Text="Farm Activities" />
+        </RadzenBreadCrumb>
+        <RadzenRow>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" class="rz-my-8">
+                <RadzenText TextStyle="TextStyle.H5">Farm Activities</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@farmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(farmName))" />
+            </RadzenStack>
+        </RadzenRow>
+        @if(UserState.IsSuperAdmin)
+        {
+            <span>Superadmin</span>
+        }
+        <RadzenScheduler @ref=@scheduler SlotRender=@OnSlotRender class="umh-height-768px" TItem="FarmActivityDto" Data=@activities
+                         StartProperty="StartDateTime" EndProperty="EndDateTime" ShowHeader="true" TextProperty="Task" SelectedIndex="2"
+                         SlotSelect=@OnSlotSelect AppointmentSelect=@OnAppointmentSelect AppointmentRender=@OnAppointmentRender
+                         DaySelect="@OnDaySelect" AppointmentMove=@OnAppointmentMove>
+            <RadzenDayView />
+            <RadzenWeekView />
+            <RadzenMonthView />
+        </RadzenScheduler>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+    [Parameter] public Guid ActivityId { get; set; }
+    
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string Mode { get; set; }
+
+    Guid farmId;
+    RadzenScheduler<FarmActivityDto> scheduler;
+    List<FarmActivityDto> activities = [];
+
+    string farmName = "Loading...";
+    DateTime dateToday = DateTime.Today;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await UserState.WhenReady;
+
+        GetSlotDateTime();
+
+        await LoadSettings().ConfigureAwait(false);
+
+        await LoadFarmActivities().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        //Console.WriteLine("firstRender: {0}", firstRender);
+        //Console.WriteLine("ActivityId: {0}", ActivityId);
+        //Console.WriteLine("Mode: {0}", Mode);
+
+        if (firstRender && ActivityId != Guid.Empty)
+        {
+            await OpenSlotDialogEdit().ConfigureAwait(false);
+
+            // clear so it doesn’t re-open if the user pings F5
+            // this also prevents the dialog from auto-closing after the parent component's lifecycle
+            ActivityId = Guid.Empty;
+        }
+        else if (firstRender && ActivityId == Guid.Empty && Mode != null && Mode.Equals("add", StringComparison.OrdinalIgnoreCase))
+        {
+            var start = DateTime.Now;
+            var end = start.AddMinutes(60); // Default slot duration of 30 minutes
+            await OpenSlotDialogAdd(start, end).ConfigureAwait(false);
+
+            Mode = null;
+        }
+    }
+
+    void GetSlotDateTime()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("ActivityId", out var a))
+        {
+            if (Guid.TryParse(a, out var id))
+                ActivityId = id;
+        }
+        // if (query.TryGetValue("slotEnd", out var e))
+        // {
+        //     if (DateTime.TryParse(e, out var dt))
+        //         slotEndDatetime = dt;
+        // }
+        // if (query.TryGetValue("slotEnd", out var e))
+        // {
+        //     if (DateTime.TryParse(e, out var dt))
+        //         slotEndDatetime = dt;
+        // }
+    }
+
+    async Task LoadSettings()
+    {
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Setting.FarmId;
+        farmName = Settings.FarmName;
+
+        // if (farmId == Guid.Empty)
+        // {
+        //     await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+        //     farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
+        // }
+    }
+
+    void OnDaySelect(SchedulerDaySelectEventArgs args)
+    {
+        //Console.WriteLine($">>>>>>>>>>>>>DaySelect: Day={args.Day} AppointmentCount={args.Appointments.Count()}");
+    }
+
+    void OnSlotRender(SchedulerSlotRenderEventArgs args)
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>OnSlotRender");
+        // Highlight today in month view
+        if (args.View.Text == "Month" && args.Start.Date == DateTime.Today)
+        {
+            args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
+        }
+
+        //// Highlight working hours (9-18)
+        //if ((args.View.Text == "Week" || args.View.Text == "Day") && args.Start.Hour > 8 && args.Start.Hour < 19)
+        //{
+        //    args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
+        //}
+    }
+
+    async Task OnSlotSelect(SchedulerSlotSelectEventArgs args)
+    {
+        //Console.WriteLine($">>>>>>>>>>>>>SlotSelect: Start={args.Start} End={args.End}");
+
+        if (args.View.Text != "Year")
+        {
+            await OpenSlotDialogAdd(args.Start, args.End).ConfigureAwait(false);
+        }
+    }
+
+    async Task OpenSlotDialogAdd(DateTime start, DateTime end)
+    {
+        FarmActivityDto data = await DialogService.OpenAsync<AddAppointmentPageDialog>("Add Activity",
+                new Dictionary<string, object> {
+                    { "FarmId", farmId },
+                    { "Start", start },
+                    { "End", end }
+                                            },
+                new DialogOptions()
+                    {
+                        Width = "800px"
+                    });
+
+        if (data != null)
+        {
+            activities.Add(data);
+            //Console.WriteLine($"New Activity: {data.Task}");
+            StateHasChanged();
+            // Either call the Reload method or reassign the Data property of the Scheduler
+            //scheduler.Data = activities;
+            await scheduler.Reload();
+        }
+        else
+        {
+            Console.WriteLine($"data is null");
+        }
+    }
+
+    async Task OpenSlotDialogEdit()
+    {
+        var response = await FarmActivityService.GetFarmActivityByIdAsync(ActivityId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            FarmActivityDto obj = response.Data;
+            FarmActivityDto data = await DialogService.OpenAsync<EditAppointmentPageDialog>("Edit Activity",
+                new Dictionary<string, object> {
+                { "Model", obj }
+                                    },
+                new DialogOptions()
+                    {
+                        Width = "95vw",
+                        Height = "80vh",
+                        Style = "min-width: 900px;"
+                    });
+
+            if (data != null)
+            {
+
+            }
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<FarmActivityDto> args)
+    {
+        //Console.WriteLine($">>>>>>>>>>>>>ActivitySelect: Activity={args.Data.Task}");
+
+        var copy = new FarmActivityDto
+            {
+                ActivityId = args.Data.ActivityId,
+                FarmId = args.Data.FarmId,
+                SupervisorId = args.Data.SupervisorId,
+                TaskId = args.Data.TaskId,
+                ProductTypeId = args.Data.ProductTypeId,
+                ProductId = args.Data.ProductId,
+                StartDateTime = args.Data.StartDateTime,
+                EndDateTime = args.Data.EndDateTime,
+                Status = args.Data.Status,
+                Notes = args.Data.Notes,
+                ProductType = args.Data.ProductType,
+                Task = args.Data.Task,
+            };
+
+        FarmActivityDto data = await DialogService.OpenAsync<EditAppointmentPageDialog>("Edit Activity",
+            new Dictionary<string, object> {
+                { "Model", copy }
+                                                            },
+            new DialogOptions()
+                {
+                    Width = "95vw",
+                    Height = "80vh",
+                    Style = "min-width: 900px;"
+                });
+
+        if (data != null)
+        {
+            // Update
+            args.Data.ActivityId = data.ActivityId;
+            args.Data.FarmId = data.FarmId;
+            args.Data.SupervisorId = data.SupervisorId;
+            args.Data.TaskId = data.TaskId;
+            args.Data.ProductTypeId = data.ProductTypeId;
+            args.Data.ProductId = data.ProductId;
+            args.Data.StartDateTime = data.StartDateTime;
+            args.Data.EndDateTime = data.EndDateTime;
+            args.Data.Status = data.Status;
+            args.Data.Notes = data.Notes;
+            args.Data.ProductType = args.Data.ProductType;
+            args.Data.Task = args.Data.Task;
+
+            await scheduler.Reload();
+        }
+
+    }
+
+    void OnAppointmentRender(SchedulerAppointmentRenderEventArgs<FarmActivityDto> args)
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>OnAppointmentRender");
+        // Never call StateHasChanged in AppointmentRender - would lead to infinite loop
+
+        // if (args.Data.Status == "Completed")
+        // {
+        //     args.Attributes["style"] = "background: green";
+        // }
+        // else if (args.Data.Status == "In Progress")
+        // {
+        //     args.Attributes["style"] = "background: orange";
+        // }
+        // else if (args.Data.Status == "Not Started")
+        // {
+        //     args.Attributes["style"] = "background: blue";
+        // }
+
+        if (args.Data.StartDateTime <= dateToday && args.Data.EndDateTime >= dateToday)
+        {
+            args.Attributes["style"] = "background: var(--rz-success)";
+        }
+        else if (args.Data.StartDateTime < dateToday)
+        {
+            args.Attributes["style"] = "background: var(--rz-secondary-dark)";
+        }
+    }
+
+    async Task OnAppointmentMove(SchedulerAppointmentMoveEventArgs args)
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>OnAppointmentMove");
+        var draggedAppointment = activities.FirstOrDefault(x => x == args.Appointment.Data);
+
+        if (draggedAppointment != null)
+        {
+            //Console.WriteLine(">>>>>>>>>>>>>draggedAppointment is not null");
+            var duration = draggedAppointment.EndDateTime.Value - draggedAppointment.StartDateTime;
+
+            //Console.WriteLine($">>>>>>>>>>>>>duration: {duration}");
+            if (args.SlotDate.TimeOfDay == TimeSpan.Zero)
+            {
+                //Console.WriteLine($">>>>>>>>>>>>>args.SlotDate.TimeOfDay == TimeSpan.Zero");
+                draggedAppointment.StartDateTime = args.SlotDate.Date.Add(draggedAppointment.StartDateTime.TimeOfDay);
+            }
+            else
+            {
+                draggedAppointment.StartDateTime = args.SlotDate;
+            }
+
+            draggedAppointment.EndDateTime = draggedAppointment.StartDateTime.Add(duration);
+
+            await scheduler.Reload();
+        }
+    }
+
+    async Task LoadFarmActivities()
+    {
+        var response = await FarmActivityService.GetFarmActivitiesAsync(farmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+            activities = response.Data.ToList();
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+}

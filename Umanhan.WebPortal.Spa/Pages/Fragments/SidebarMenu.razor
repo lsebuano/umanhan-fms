@@ -1,0 +1,10 @@
+﻿@* @using static Umanhan.WebPortal.Spa.Layout.MainLayout
+
+@foreach (var item in Items)
+{
+    <RadzenPanelMenuItem Text="@item.Title" Icon="@item.Icon" Path="@item.Url" title="@item.Title" />
+}
+
+@code {
+    [Parameter] public List<MenuItem> Items { get; set; } = new();
+} *@

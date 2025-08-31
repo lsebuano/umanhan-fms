@@ -1,0 +1,41 @@
+﻿@inject NavigationManager NavigationManager
+
+<RadzenRow JustifyContent="JustifyContent.Center">
+    <div class="d-flex justify-center items-center min-h-screen">
+        <RadzenCard class="umh-section-content">
+            <div class="mb-4">
+                <RadzenImage AlternateText="Umanhan" Path="images/umanhan_logo_225x225_no_text_100.png" class="umh-width-150px rz-mb-5" />
+                <RadzenText TextStyle="TextStyle.DisplayH2" class="rz-color-base-800 poppins-semibold umh-mb-n15px">umanhan</RadzenText>
+                <RadzenText TextStyle="TextStyle.DisplayH4" class="rz-color-base-600 poppins-regular rz-mb-10">Farm Management System</RadzenText>
+                <RadzenText TextStyle="TextStyle.DisplayH6" class="rz-color-base-800">Let's help you set up your farm so you can start planning, planting, and tracking operations effectively.</RadzenText>
+            </div>
+        </RadzenCard>
+    </div>
+
+    <div class="features-section">
+        <h2 class="section-title">What We Offer</h2>
+        <div class="features-grid">
+            <RadzenCard>
+                <h3>Farm Planning</h3>
+                <p>Plot zones, assign labor, and schedule harvests with precision.</p>
+            </RadzenCard>
+            <RadzenCard>
+                <h3>Inventory Tracking</h3>
+                <p>Monitor harvested produce and get alerts for low stock or surplus nearing spoilage.</p>
+            </RadzenCard>
+            <RadzenCard>
+                <h3>Donation & Distribution</h3>
+                <p>Redirect surplus crops to donation partners, with tracking and reports.</p>
+            </RadzenCard>
+            <RadzenCard>
+                <h3>Sales Optimization</h3>
+                <p>Cut out middlemen—sell directly to consumers and track revenue trends.</p>
+            </RadzenCard>
+        </div>
+    </div>
+
+    <div class="cta-section">
+        <h2>Start managing your farm like a pro.</h2>
+        <RadzenButton Icon="login" Text="Log in to your dashboard" Click="@(() => NavigationManager.NavigateTo("/authentication/login"))" />
+    </div>
+</RadzenRow>

@@ -1,0 +1,93 @@
+﻿@inject PricingService PricingService
+@inject PricingProfileService PricingProfileService
+@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+
+<RadzenStack Orientation="Orientation.Vertical">
+    <RadzenFormField Text="Pricing Profile" Variant="Variant.Text">
+        <RadzenDropDown @bind-Value="@profileId" Data=@pricingProfiles TextProperty="Name" Placeholder="Select" ValueProperty="ProfileId"
+                        class="umh-width-100" Name="ProfileId" />
+    </RadzenFormField>
+
+    <RadzenFormField Text="Base Price" Variant="Variant.Text">
+        <RadzenNumeric @bind-Value="basePrice" Min="1" Max="1000000" />
+    </RadzenFormField>
+
+    <RadzenFormField Text="Final Price" Variant="Variant.Text">
+        <RadzenText TextStyle="TextStyle.H5" Text="@finalPrice.ToString("n2")" class="rz-mt-3"></RadzenText>
+    </RadzenFormField>
+
+    <RadzenStack AlignItems="AlignItems.Start" class="rz-mt-5">
+        <RadzenButton Text="Calculate" Icon="equal" Disabled="isCalculating" Click="@CalculatePrice" class="rz-mb-5" ButtonStyle="ButtonStyle.Base" />
+    </RadzenStack>
+
+    <RadzenFooter>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+            <RadzenButton Text="Cancel" Click="() => DialogService.Close(0)" ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text="Use Final Price" Icon="check" Disabled="isCalculating" Click="() => DialogService.Close(finalPrice)" />
+        </RadzenStack>
+    </RadzenFooter>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid FarmId { get; set; }
+
+    private IEnumerable<PricingProfileDto> pricingProfiles;
+    private Guid profileId;
+    private decimal basePrice = 1000;
+    private bool isCalculating = false;
+    private decimal finalPrice = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadPricingProfiles().ConfigureAwait(false);
+    }
+
+    async Task LoadPricingProfiles()
+    {
+        var response = await PricingProfileService.GetPricingProfilesByFarmIdAsync(FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            pricingProfiles = response.Data;
+            var obj = pricingProfiles.FirstOrDefault();
+            if (obj == null)
+                obj = new PricingProfileDto();
+
+            profileId = obj.ProfileId;
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task CalculatePrice()
+    {
+        isCalculating = true;
+        var task = DialogService.OpenAsync("", ds =>@<BusyDialog /> ,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        if (basePrice > 0)
+        {
+            var response = await PricingService.CalculateFinalPriceAsync(profileId, basePrice).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                var obj = response.Data;
+                finalPrice = obj.FinalPrice;
+                StateHasChanged();
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            await NotificationService.ShowError("Base price must be greater than 0.");
+        }
+
+        isCalculating = false;
+        DialogService.Close(true);
+    }
+}

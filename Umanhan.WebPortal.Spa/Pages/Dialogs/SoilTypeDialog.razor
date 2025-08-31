@@ -1,0 +1,159 @@
+﻿@inject DialogService DialogService
+@inject SoilTypeService SoilTypeService
+@inject AppNotificationService NotificationService
+@inject IValidator<SoilTypeDto> Validator
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenStack>
+        <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+            <RadzenTemplateForm TItem="SoilTypeDto" Data="@obj" Submit="@SaveChanges">
+                <RadzenStack>
+                    <FluentValidationValidator Validator="@Validator" />
+
+                    <RadzenFormField Text="Soil" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.SoilName" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.SoilName)" />
+
+                    <RadzenFormField Text="Soil Organic Carbon" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.SoilOrganicCarbon" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.SoilOrganicCarbon)" />
+
+                    <RadzenFormField Text="Soil Fertility" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.SoilFertility" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.SoilFertility)" />
+
+                    <RadzenFormField Text="Soil Moisture Level" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.SoilMoisture" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.SoilMoisture)" />
+
+                    <RadzenFormField Text="Soil pH Level" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.SoilPh" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.SoilPh)" />
+
+                    <RadzenFormField Text="Notes" Variant="Variant.Text">
+                        <RadzenTextArea @bind-Value="@obj.Notes" Rows="4" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Notes)" />
+                </RadzenStack>
+
+                <RadzenFooter>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                        <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                        <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                    </RadzenStack>
+                </RadzenFooter>
+            </RadzenTemplateForm>
+        </RadzenColumn>
+    </RadzenStack>
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => DialogService.Close(true))" Variant="Variant.Flat" Text="Close" class="umh-width-120px" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+    private string mode = "Add";
+    private SoilTypeDto obj;
+    private string title = "Message";
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (obj == null)
+        {
+            obj = new SoilTypeDto();
+        }
+        // initialize the context
+        editContext = new EditContext(obj);
+        //await LoadUnits().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        await LoadObj().ConfigureAwait(false);
+        // update the context
+        editContext = new EditContext(obj);
+    }
+
+    private async Task LoadObj()
+    {
+        if (!ObjId.Equals(Guid.Empty))
+        {
+            mode = "Edit";
+            var response = await SoilTypeService.GetSoilTypeByIdAsync(ObjId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            mode = "Add";
+            obj = new SoilTypeDto();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            SoilTypeDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await SoilTypeService.CreateSoilTypeAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await SoilTypeService.UpdateSoilTypeAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+}

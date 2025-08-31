@@ -1,0 +1,170 @@
+﻿@inject NlpService NlpService
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+
+<RadzenText TextStyle="TextStyle.Body1" Text="@Title" class="umh-fw-500" />
+
+<RadzenRow>
+    <RadzenColumn SizeMD="8">
+        <RadzenCard Variant="Variant.Outlined">
+            <RadzenDataGrid AllowFiltering="true" AllowPaging="true" AllowSorting=true
+                            ShowPagingSummary="true" Data="@list" AllowAlternatingRows=true PageSize="12"
+                            SelectionMode="DataGridSelectionMode.Multiple">
+                <Columns>
+                    <RadzenDataGridColumn Property="@nameof(SparklineChartDto.MonthYearString)" Title="Date" />
+                    <RadzenDataGridColumn Property="@nameof(SparklineChartDto.Total)" Title="Total" FormatString="{0:n2}">
+                        <Template Context="ex">
+                            @if (ex.Total == 0)
+                            {
+                                <span class="rz-color-base-400">@ex.Total.ToString("n2")</span>
+                            }
+                            else
+                            {
+                                <span>@ex.Total.ToString("n2")</span>
+                            }
+                        </Template>
+                        <FooterTemplate>
+                            Total: <strong>@list.Sum(x => x.Total).ToString("n2")</strong>
+                        </FooterTemplate>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Property="@nameof(SparklineChartDto.TotalPrevious)" Title="Previous" FormatString="{0:n2}">
+                        <Template Context="ex">
+                            @if (ex.TotalPrevious == 0)
+                            {
+                                <span class="rz-color-base-400">@ex.TotalPrevious.ToString("n2")</span>
+                            }
+                            else
+                            {
+                                <span>@ex.TotalPrevious.ToString("n2")</span>
+                            }
+                        </Template>
+                        <FooterTemplate>
+                            <strong>@list.Sum(x => x.TotalPrevious).ToString("n2")</strong>
+                        </FooterTemplate>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Property="@nameof(SparklineChartDto.Difference)" Title="Diff" FormatString="{0:n2}">
+                        <Template Context="ex">
+                            @if (ex.Difference == 0)
+                            {
+                                <span class="rz-color-base-400">@ex.Difference.ToString("n2")</span>
+                            }
+                            else
+                            {
+                                <span>@ex.Difference.ToString("n2")</span>
+                            }
+                        </Template>
+                        <FooterTemplate>
+                            <strong>@list.Sum(x => x.Difference).ToString("n2")</strong>
+                        </FooterTemplate>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn Property="@nameof(SparklineChartDto.PercentageChange)" Title="Change %" FormatString="{0:p1}">
+                        <Template Context="ex">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start">
+                                @if (ex.PercentageChange == 0)
+                                {
+                                    <RadzenIcon Icon="remove" IconColor="gray" />
+                                }
+                                else if (ex.PercentageChange > 0)
+                                {
+                                    <RadzenIcon Icon="arrow_upward" IconColor="green" />
+                                }
+                                else
+                                {
+                                    <RadzenIcon Icon="arrow_downward" IconColor="red" />
+                                }
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Math.Abs(ex.PercentageChange).ToString("p1")" />
+                            </RadzenStack>
+                        </Template>
+                        <FooterTemplate>
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start">
+                                @if (totalPercentChange == 0)
+                                {
+                                    <RadzenIcon Icon="remove" IconColor="gray" />
+                                }
+                                else if (totalPercentChange > 0)
+                                {
+                                    <RadzenIcon Icon="arrow_upward" IconColor="green" />
+                                }
+                                else
+                                {
+                                    <RadzenIcon Icon="arrow_downward" IconColor="red" />
+                                }
+                                <RadzenText TextStyle="TextStyle.Body2" Text="@Math.Abs(totalPercentChange).ToString("p1")" class="umh-fw-bold" />
+                            </RadzenStack>
+                        </FooterTemplate>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        </RadzenCard>
+    </RadzenColumn>
+    <RadzenColumn SizeMD="4">
+        <RadzenButton Icon="auto_awesome" class="ai-color rz-mb-3" Text="@(isGenerating ? "Please wait..." : "Analyze Data")" Click="@AnalyzeData" />
+
+        @if (!string.IsNullOrEmpty(apiTextHtml.Value))
+        {
+            <div class="umh-note-box umh-max-height-65vh-of-y-auto">
+                @apiTextHtml
+            </div>
+        }
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    [Parameter] public IEnumerable<SparklineChartDto> Datasource { get; set; }
+    [Parameter] public string Title { get; set; }
+    [Parameter] public string Prompt { get; set; }
+
+    private List<SparklineChartDto> list = new();
+    private decimal totalCurrent => list?.Sum(x => x.Total) ?? 0;
+    private decimal totalPrevious => list?.Sum(x => x.TotalPrevious) ?? 0;
+    private decimal totalPercentChange => totalPrevious == 0 ? 0 : ((totalCurrent - totalPrevious) / totalPrevious);
+
+    private MarkupString apiTextHtml;
+    private bool isGenerating;
+
+    protected override void OnParametersSet()
+    {
+        if (Datasource != null)
+        {
+            list = Datasource.ToList();
+        }
+    }
+
+    async Task AnalyzeData()
+    {
+        if (!list.Any())
+        {
+            await NotificationService.ShowInfo("Nothing to analyze.");
+            return;
+        }
+
+        if (!isGenerating)
+        {
+            isGenerating = true;
+            
+            var jsonData = System.Text.Json.JsonSerializer.Serialize(list);
+            var result = await NlpService.GenerateDataInsightAsync(Prompt, jsonData).ConfigureAwait(false);
+            if (result != null)
+            {
+                FormatText(result);
+            }
+            else
+            {
+                await NotificationService.ShowError("Failed to generate report.");
+            }
+
+            isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    void FormatText(string result)
+    {
+        var encoded = System.Net.WebUtility.HtmlEncode(result);
+        var withBreaks = encoded.Replace("\\n", "<br/>").Replace("###", "");
+        var htmlized = Regex.Replace(withBreaks, @"\*\*(.+?)\*\*", "<b>$1</b>");
+        apiTextHtml = new MarkupString(htmlized);
+
+        //Console.WriteLine(apiTextHtml);
+    }
+}

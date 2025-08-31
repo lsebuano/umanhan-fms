@@ -1,0 +1,21 @@
+﻿@page "/surplus"
+@attribute [Authorize]
+
+<PermissionView Permission="Log.Read">
+    <ChildContent>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/surplus" Text="Surplus" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Surplus</RadzenText>
+
+
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+
+}

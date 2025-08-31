@@ -1,0 +1,69 @@
+﻿@inject AppNotificationService NotificationService
+@inject NlpService NlpService
+
+<RadzenText Text="@Title" TextStyle="TextStyle.H5" class="rz-mb-4" />
+
+@if (!string.IsNullOrEmpty(apiTextHtml.Value))
+{
+    <div class="umh-note-box">
+        @apiTextHtml
+    </div>
+}
+else
+{
+    <p>Please wait...</p>
+}
+
+@code {
+    [Parameter] public string JsonData { get; set; }
+    [Parameter] public string Prompt { get; set; }
+    [Parameter] public string Title { get; set; }
+
+    private MarkupString apiTextHtml;
+    private bool isGenerating;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if(firstRender)
+        {
+            await AnalyzeData().ConfigureAwait(false);
+        }
+    }
+
+    async Task AnalyzeData()
+    {
+        if (string.IsNullOrEmpty(JsonData))
+        {
+            await NotificationService.ShowInfo("No data provided for analysis.");
+            return;
+        }
+
+        if (!isGenerating)
+        {
+            isGenerating = true;
+
+            var result = await NlpService.GenerateDataInsightAsync(Prompt, JsonData);
+            if (result != null)
+            {
+                FormatText(result);
+            }
+            else
+            {
+                await NotificationService.ShowError("Failed to generate report.");
+            }
+
+            isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    void FormatText(string result)
+    {
+        var encoded = System.Net.WebUtility.HtmlEncode(result);
+        var withBreaks = encoded.Replace("\\n", "<br/>").Replace("###", "");
+        var htmlized = Regex.Replace(withBreaks, @"\*\*(.+?)\*\*", "<b>$1</b>");
+        apiTextHtml = new MarkupString(htmlized);
+
+        //Console.WriteLine(apiTextHtml);
+    }
+}

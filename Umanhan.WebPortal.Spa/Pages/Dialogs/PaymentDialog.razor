@@ -1,0 +1,109 @@
+﻿@inject DialogService DialogService
+@inject ReportService ReportService
+@inject AppNotificationService NotificationService
+@inject NavigationManager NavigationManager
+@inject IValidator<PaymentDetailsDto> Validator
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenTemplateForm TItem="PaymentDetailsDto" Data="@Model" Submit="@SaveChanges">
+        <FluentValidationValidator Validator="@Validator" />
+
+        <RadzenCard Variant="Variant.Outlined" class="rz-mb-5">
+            <RadzenStack Orientation="Orientation.Vertical">
+                <RadzenFormField Text="Paid Amount" Variant="Variant.Text">
+                    <RadzenNumeric @bind-Value="Model.ActualPaidAmount" Format="n2" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.ActualPaidAmount)" />
+
+                <RadzenFormField Text="Payment Method" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="Model.PaymentMethod" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.PaymentMethod)" />
+
+                <RadzenFormField Text="Payment Reference" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="Model.PaymentRef" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.PaymentRef)" />
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenCard Variant="Variant.Outlined">
+            <RadzenStack Orientation="Orientation.Vertical">
+                <RadzenFormField Text="Name" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="Model.BuyerName" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.BuyerName)" />
+
+                <RadzenFormField Text="Address" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="Model.BuyerAddress" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.BuyerAddress)" />
+
+                <RadzenFormField Text="TIN" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="Model.BuyerTin" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.BuyerTin)" />
+
+                <RadzenFormField Text="Contact No" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="Model.BuyerContactNo" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.BuyerContactNo)" />
+            </RadzenStack>
+        </RadzenCard>
+
+        <RadzenFooter>
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                <RadzenButton Text=@(isSaving ? "Printing..." : "Print") Icon=@(isSaving ? "hourglass" : "print") Type="Submit" Disabled="isSaving" />
+            </RadzenStack>
+        </RadzenFooter>
+    </RadzenTemplateForm>
+</RadzenStack>
+
+
+@code {
+    [Parameter] public PaymentDetailsDto Model { get; set; }
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    protected override void OnInitialized()
+    {
+        editContext = new EditContext(Model);
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        var response = await ReportService.GenerateReceiptAsync(Model).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            // navigate to the receipt verification page with the generated receipt ID
+            var receiptId = response.Data?.ReceiptNo;
+            if (!string.IsNullOrEmpty(receiptId))
+            {
+                var url = $"/verification/receipt/{receiptId}";
+                NavigationManager.NavigateTo(url);
+            }
+            else
+            {
+                await NotificationService.ShowError("Receipt ID is not available. Please try again later.");
+            }
+        }
+        else
+        {
+            await NotificationService.ShowError("Unable to generate receipt. Please try again later.");
+        }
+
+        isSaving = false;
+    }
+}

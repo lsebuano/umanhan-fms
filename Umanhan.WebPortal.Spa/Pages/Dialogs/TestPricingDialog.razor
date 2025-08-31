@@ -1,0 +1,107 @@
+﻿@inject PricingService PricingService
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject QuotationService QuotationService
+
+<RadzenText TextStyle="TextStyle.H6" Text="Let's compute the final price" />
+<RadzenStack Orientation="Orientation.Vertical" Gap="5" class="rz-mt-5">
+    <RadzenFormField Text="Base Price" Variant="Variant.Text">
+        <RadzenNumeric @bind-Value="basePrice" Min="1" Max="1000000" />
+    </RadzenFormField>
+    <RadzenStack AlignItems="AlignItems.Start" class="rz-mt-5">
+        <RadzenButton Text="Calculate" Icon="equal" Disabled="isCalculating" Click="@CalculatePrice" class="rz-mb-5 umh-width-150px" ButtonStyle="ButtonStyle.Base" />
+    </RadzenStack>
+    @if (breakdown.Any())
+    {
+        <RadzenFormField Text="Final Price" Variant="Variant.Text">
+            <RadzenText TextStyle="TextStyle.H5" Text="@finalPrice.ToString("n2")" class="rz-mt-3"></RadzenText>
+        </RadzenFormField>
+        <RadzenAccordion class="rz-mb-2">
+            <Items>
+                <RadzenAccordionItem Text="Breakdown" Icon="reorder" CollapseTitle="Collapse breakdown"
+                                     ExpandTitle="Expand breakdown" CollapseAriaLabel="Collapse the pricing breakdown"
+                                     ExpandAriaLabel="Expand the pricing breakdown" Selected="true">
+
+                    <RadzenDataGrid AllowColumnResize="true" AllowAlternatingRows="false" AllowSorting="true" PagerHorizontalAlign="HorizontalAlign.Left"
+                                    Data="@breakdown" ColumnWidth="300px" SelectionMode="DataGridSelectionMode.Single" ShowHeader="false">
+                        <Columns>
+                            <RadzenDataGridColumn Property="ConditionType" Title="Condition" Width="250px" />
+                            <RadzenDataGridColumn Title="" Width="300px" TextAlign="TextAlign.Left">
+                                <Template Context="data">
+                                    <RadzenStack Orientation="Orientation.Horizontal">
+                                        <RadzenText Text="@data.Before.ToString("n2")" />
+                                        <RadzenText Text="@data.Symbol" />
+                                        <RadzenText Text="@data.Value.ToString("n2")" />
+                                        <RadzenText Text="@data.Suffix" class="umh-ml-n3px" />
+                                    </RadzenStack>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="After" Title="" Width="180px" FormatString="{0:n2}" TextAlign="TextAlign.Right" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </RadzenAccordionItem>
+            </Items>
+        </RadzenAccordion>
+    }
+@*     <RadzenFooter>
+        @if (breakdown.Any())
+        {
+            <RadzenButton Text="Send as Quotation" Icon="forward" Click="@(() => OpenSendQuotationDialog())" ButtonStyle="ButtonStyle.Base" />
+        }
+    </RadzenFooter>  *@   
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid FarmId { get; set; }
+    [Parameter] public Guid ProfileId { get; set; }
+
+    decimal basePrice = 100;
+    bool isCalculating = false;
+    decimal finalPrice = 0;
+    IList<PricingDto> breakdown = [];
+
+    async Task CalculatePrice()
+    {
+        isCalculating = true;
+        var task = DialogService.OpenAsync("", ds =>@<BusyDialog /> ,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        if (basePrice > 0)
+        {
+            var response = await PricingService.CalculateFinalPriceAsync(ProfileId, basePrice).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                var obj = response.Data;
+                finalPrice = obj.FinalPrice;
+                breakdown = obj.Breakdown;
+                StateHasChanged();
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            await NotificationService.ShowError("Base price must be greater than 0.");
+        }
+
+        isCalculating = false;
+        DialogService.Close(true);
+    }
+
+    async Task OpenSendQuotationDialog()
+    {
+        await DialogService.OpenAsync<SendQuotationDialog>("Send Quotation",
+                    new Dictionary<string, object> {
+                        { "FarmId", FarmId },
+                        { "ProfileId", ProfileId },
+                        { "BasePrice", basePrice },
+                        { "FinalPrice", finalPrice }
+                    },
+                    new DialogOptions()
+                    {
+                        Width = "60vw",
+                        Height = "70vh",
+                    });
+        DialogService.Close(true);
+    }
+}

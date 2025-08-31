@@ -1,0 +1,32 @@
+﻿@page "/encode-sales"
+@attribute [Authorize]
+@inject WebAppSettingService AppSettingService
+
+<RadzenBreadCrumb>
+    <RadzenBreadCrumbItem Path="/" Text="Home" />
+    <RadzenBreadCrumbItem Path="/encode-sales" Text="Encode Farm Sales" />
+</RadzenBreadCrumb>
+<DashboardCashier FarmId="@farmId" FarmName="@farmName" />
+
+@code {
+    [CascadingParameter] public WebAppSetting Settings { get; set; }
+    private Guid farmId;
+    private string farmName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    async Task LoadSettings()
+    {
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+        if (Settings != null)
+        {
+            farmId = Settings.FarmId;
+            farmName = Settings.FarmName;
+
+            StateHasChanged();
+        }
+    }
+}

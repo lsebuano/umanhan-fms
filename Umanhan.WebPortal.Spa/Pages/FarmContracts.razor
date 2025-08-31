@@ -1,0 +1,1325 @@
+﻿@page "/contracts"
+@using Radzen.Blazor.Rendering
+@using Umanhan.Shared.Extensions
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject FarmContractService FarmContractService
+@inject FarmContractDetailService FarmContractDetailService
+@inject SystemSettingService SystemSettingService
+@inject CustomerService CustomerService
+@inject IValidator<FarmContractDto> Validator
+@inject ReportService ReportService
+@inject NavigationManager NavigationManager
+@inject FarmActivityService FarmActivityService
+@inject TooltipService TooltipService
+@inject WebAppSettingService AppSettingService
+@inject UserStateService UserState
+
+<PermissionView Permission="Farm.Full">
+    <ChildContent>
+        <PageTitle>Farm Contracts</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/contracts" Text="Farm Contracts" />
+        </RadzenBreadCrumb>
+        <RadzenRow>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" class="rz-my-8">
+                <RadzenText TextStyle="TextStyle.H5">Farm Contracts</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@farmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(farmName))" />
+            </RadzenStack>
+        </RadzenRow>
+
+        <RadzenRow>
+            <RadzenColumn SizeMD="10">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Expected Revenue</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Projected revenue from valid contract details that are not yet cancelled."))" />
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H5" class="" title="@contractsExpectedRevenue.Key.ToString("n2")">@contractsExpectedRevenue.Value</RadzenText>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Total Value of Outstanding Contracts</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Sum of the contract values from all active farm contract details. Excludes cancelled items. Includes both unpaid and partially paid contracts."))" />
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H5" class="" title="@contractsTotalValue.Key.ToString("n2")">@contractsTotalValue.Value</RadzenText>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Lost Revenue from Cancelled Contracts</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Total potential value lost from cancelled contract details."))" />
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H5" class="" title="@contractsTotalLostValue.Key.ToString("n2")">@contractsTotalLostValue.Value</RadzenText>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Contracts Approaching Harvest</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Number of contract items scheduled for harvest within the next 7 days."))" />
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H5" class="">@contractsApproachingHarvest.ToString("n0")</RadzenText>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">New Contracts</RadzenText>
+                            @* <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Tracks sales trends, seasonality (e.g., higher vegetable box orders in harvest months)"))" /> *@
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H5" class="">@contractsNew.ToString("n0")</RadzenText>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Harvested</RadzenText>
+                            @* <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Tracks sales trends, seasonality (e.g., higher vegetable box orders in harvest months)"))" /> *@
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H5" class="">@contractsHarvested.ToString("n0")</RadzenText>
+                    </RadzenCard>
+
+                    @* <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Confirmed Pick Ups</RadzenText>
+                        @* <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Tracks sales trends, seasonality (e.g., higher vegetable box orders in harvest months)"))" />
+                    </RadzenStack>
+                    <RadzenText TextStyle="TextStyle.H5" class="">@contractsPickedUp.ToString("n0")</RadzenText>
+                </RadzenCard> *@
+
+                    @* <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Paid</RadzenText>
+                        <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Number of contracts marked as PAID."))" />
+                    </RadzenStack>
+                    <RadzenText TextStyle="TextStyle.H5" class="">@contractsPaid.ToString("n0")</RadzenText>
+                </RadzenCard> *@
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="2">
+                <RadzenStack AlignItems="AlignItems.Start">
+                    <RadzenButton Icon="auto_awesome" class="ai-color rz-ms-auto" title="Generate insights" Click="@OpenSideDialog" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow class="rz-mt-5">
+            <RadzenColumn SizeMD="5">
+                <div class="full-height-container">
+                    <RadzenTemplateForm TItem="FarmContractDto" EditContext="@editContext">
+                        <FluentValidationValidator Validator="@Validator" />
+
+                        <RadzenDataGrid @ref="farmContractGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false"
+                                        FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="15" AllowPaging="true"
+                                        PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true" Data="@objList" ColumnWidth="160px"
+                                        LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                        @bind-Value=@selectedObjList EditMode="DataGridEditMode.Single" TItem="FarmContractDto"
+                                        RowUpdate="@OnUpdateRowGrid1" RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1"
+                                        Filter="@ResetGrid1" RowSelect="@OnRowSelect" class="umh-height-57vh" >
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                <RadzenStack Orientation="Orientation.Horizontal">
+                                    <RadzenButton Text="New Contract" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@InsertRowGrid1 />
+
+                                    <div class="rz-ms-auto">
+                                        @if (showActiveRange)
+                                        {
+                                            <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Icon="filter_alt" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Lighter">
+                                                <ChildContent>
+                                                    <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                                    <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                                    <RadzenSplitButtonItem Text="Last Year" Value="LastYear" />
+                                                    <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                                                </ChildContent>
+                                            </RadzenSplitButton>
+                                        }
+                                        else
+                                        {
+                                            <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Variant="Variant.Text" Icon="filter_alt">
+                                                <ChildContent>
+                                                    <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                                    <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                                    <RadzenSplitButtonItem Text="Last Year" Value="LastYear" />
+                                                    <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                                                </ChildContent>
+                                            </RadzenSplitButton>
+                                        }
+                                    </div>
+                                </RadzenStack>
+                                <RadzenStack AlignItems="AlignItems.End">
+                                    <RadzenCard Variant="Variant.Outlined" class="rz-mt-2 umh-badge">
+                                        <RadzenText TextStyle="TextStyle.Caption">@activeRangeMessage</RadzenText>
+                                    </RadzenCard>
+                                </RadzenStack>
+                            </HeaderTemplate>
+                            <Columns>
+                                <RadzenDataGridColumn Context="contract" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right" Width="150px">
+                                    <Template Context="contract">
+                                        @if (!contract.IsCancelled && !contract.IsPaid)
+                                        {
+                                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowGrid1(contract))" @onclick:stopPropagation="true" />
+                                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(contract))" @onclick:stopPropagation="true" />
+                                        }
+                                        @if (contract.IsPaid)
+                                        {
+                                            <RadzenButton Icon="receipt" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => PrintReceipt(contract))" @onclick:stopPropagation="true" title="Print Receipt" />
+                                        }
+                                    </Template>
+                                    <EditTemplate Context="contract">
+                                        <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowGrid1(contract))" aria-label="Save" />
+                                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditGrid1(contract))" aria-label="Cancel" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(contract))" aria-label="Delete" />
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.Status)" Title="Status" Width="130px">
+                                    <Template Context="contract">
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@contract.Status" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.CustomerName)" Title="Customer" Width="200px">
+                                    <EditTemplate Context="contract">
+                                        <RadzenDropDown @bind-Value="@contract.CustomerId" Data=@customers TextProperty="CustomerName" Placeholder="Select customer/partner" ValueProperty="CustomerId"
+                                                        class="umh-width-100" Name="CustomerId" />
+                                        <ValidationMessage For="@(() => contract.CustomerId)" />
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.ContractDate)" Width="180px" FormatString="{0:MM/dd/yyyy}">
+                                    <HeaderTemplate>
+                                        <div class="umh-text-align-center">
+                                            Contract<br />
+                                            <span>Date</span>
+                                        </div>
+                                    </HeaderTemplate>
+                                    <EditTemplate Context="contract">
+                                        <RadzenDatePicker @bind-Value=@contract.ContractDate Name="ContractDate" ShowCalendarWeek ShowTime=false DateFormat="MM/dd/yyyy" />
+                                        <ValidationMessage For="@(() => contract.ContractDate)" />
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </RadzenTemplateForm>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="7">
+                @if (objList != null && objList.Any())
+                {
+                    <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                        <RadzenStack Gap="1rem">
+                            <RadzenCard Variant="Variant.Text" class="rz-background-color-primary-lighter rz-color-on-primary-lighter">
+                                Contract: <b>@selectedObjList.FirstOrDefault()?.CustomerName</b>
+                            </RadzenCard>
+                            <RadzenTabs>
+                                <Tabs>
+                                    <RadzenTabsItem Text="Details">
+                                        <RadzenDataGrid @ref="detailsGrid" AllowFiltering="true" AllowPaging="true" ShowPagingSummary="true"
+                                                        AllowColumnResize="true" TItem="FarmContractDetailDto"
+                                                        Data="@selectedDetails">
+                                            <EmptyTemplate>
+                                                <p class="umh-no-records">No records to display.</p>
+                                            </EmptyTemplate>
+                                            <HeaderTemplate>
+                                                @if (!selectedMaster.IsCancelled && !selectedMaster.IsPaid)
+                                                {
+                                                    <RadzenButton Text="Add" Icon="add" ButtonStyle="ButtonStyle.Light" Click="@(() => AddContractDetails(selectedMaster.ContractId))" />
+                                                }
+                                            </HeaderTemplate>
+                                            <Columns>
+                                                <RadzenDataGridColumn Context="det" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" Width="80px">
+                                                    <Template Context="det">
+                                                        @if (((!selectedMaster.IsCancelled && !selectedMaster.IsPaid) && (!det.IsCancelled && !det.IsPaid)) && !det.IsRecovered)
+                                                        {
+                                                            <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" title="Cancel this contract detail" class="rz-ms-2"
+                                                                          Size="ButtonSize.Medium" Click="@(async() => { selectedContractDetailId = det.ContractDetailId; await CancelTransaction();})" />
+                                                        }
+                                                        else
+                                                        {
+                                                            if (det.IsCancelled && det.HarvestDate.HasValue)
+                                                            {
+                                                                <RadzenButton Icon="cycle" ButtonStyle="ButtonStyle.Success" Shade="Shade.Light" Variant="Variant.Flat" title="Recover this farm produce" class="rz-ms-2"
+                                                                              Size="ButtonSize.Medium" Click="@(async() => { selectedContractDetailId = det.ContractDetailId; await RecoverHarvest();})" />
+                                                            }
+                                                        }
+                                                    </Template>
+                                                </RadzenDataGridColumn>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.Status)" Title="Status" Width="120px" Frozen=true>
+                                                    <Template Context="det">
+                                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@det.Status" />
+                                                    </Template>
+                                                </RadzenDataGridColumn>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.Product)" Title="Product" Width="200px" Frozen=true />
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.Unit)" Title="Unit" Width="100px">
+                                                    <Template Context="det">
+                                                        <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@det.Unit" />
+                                                    </Template>
+                                                </RadzenDataGridColumn>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.ContractedUnitPrice)" Width="150px">
+                                                    <HeaderTemplate>
+                                                        <div class="umh-text-align-center">
+                                                            Contracted<br />
+                                                            <span>Unit Price</span>
+                                                        </div>
+                                                    </HeaderTemplate>
+                                                </RadzenDataGridColumn>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.ContractedQuantity)" Width="150px">
+                                                    <HeaderTemplate>
+                                                        <div class="umh-text-align-center">
+                                                            Contracted<br />
+                                                            <span>Qty</span>
+                                                        </div>
+                                                    </HeaderTemplate>
+                                                </RadzenDataGridColumn>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.TotalAmount)" Title="Total" FormatString="{0:n2}" TextAlign="TextAlign.Right" Width="150px">
+                                                    <FooterTemplate>
+                                                        Total: <b>@String.Format("{0:n2}", selectedDetails.Sum(x => x.TotalAmount))</b>
+                                                    </FooterTemplate>
+                                                </RadzenDataGridColumn>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.HarvestDate)" Width="150px">
+                                                    <HeaderTemplate>
+                                                        <div class="umh-text-align-center">
+                                                            Harvest<br />
+                                                            <span>Date</span>
+                                                        </div>
+                                                    </HeaderTemplate>
+                                                    <Template Context="det">
+                                                        @if (det.HarvestDate.HasValue)
+                                                        {
+                                                            hasHarvestActivity = det.HasHarvestActivity;
+                                                            if (hasHarvestActivity)
+                                                            {
+                                                                Guid activityId = det.HarvestActivityId == Guid.Empty ? harvestActivityId : det.HarvestActivityId;
+                                                                string url = $"/farm-activities?ActivityId={activityId}";
+
+                                                                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Shade="Shade.Light">
+                                                                    <RadzenLink Path=@url Text="@det.HarvestDate.Value.ToString("MM/dd/yyyy")" title="See Farm Activity details" />
+                                                                </RadzenBadge>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>@det.HarvestDate.Value.ToString("MM/dd/yyyy")</span>
+
+                                                                <RadzenButton Icon="agriculture" title="Create Harvest Activity" class="rz-ms-2" Click="@(() => CreateHarvestToActivity(det))"
+                                                                              ButtonStyle="ButtonStyle.Base" ButtonType="ButtonType.Button"
+                                                                              Size="ButtonSize.ExtraSmall" />
+                                                            }
+                                                        }
+                                                        else if (!det.IsCancelled)
+                                                        {
+                                                            <RadzenButton @ref=popButtonDateHarvest Icon="add" title="Add Harvest Date" class="rz-ms-2"
+                                                                          ButtonStyle="ButtonStyle.Base" ButtonType="ButtonType.Button"
+                                                                          Size="ButtonSize.ExtraSmall" Click="@(args => { selectedDetail = det; selectedContractDetailId = det.ContractDetailId; popupDateHarvest.ToggleAsync(popButtonDateHarvest.Element); })" />
+                                                        }
+                                                    </Template>
+                                                </RadzenDataGridColumn>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDetailDto.PickupDate)" FormatString="{0:MM/dd/yyyy}" Width="150px">
+                                                    <HeaderTemplate>
+                                                        <div class="umh-text-align-center">
+                                                            Pickup<br />
+                                                            <span>Date</span>
+                                                        </div>
+                                                    </HeaderTemplate>
+                                                    <Template Context="det">
+                                                        @if (det.PickupDate.HasValue)
+                                                        {
+                                                            // make text red if pick up has lapsed
+                                                            var isLapsed = det.PickupDate.Value < DateTime.Now;
+                                                            var style = isLapsed ? "umh-text-color-red" : "umh-text-color-black";
+                                                            var title = isLapsed ? "OVERDUE" : "";
+
+                                                            <RadzenBadge BadgeStyle="BadgeStyle.Light">
+                                                                <span class="@style" title="@title">@det.PickupDate.Value.ToString("MM/dd/yyyy")</span>
+                                                            </RadzenBadge>
+
+                                                            @if (!det.IsPaid && !det.IsCancelled)
+                                                            {
+                                                                <RadzenButton @ref="@popButton" Icon="arrow_drop_down" title="Actions" class="rz-ms-2"
+                                                                              ButtonStyle="ButtonStyle.Base" ButtonType="ButtonType.Button"
+                                                                              Size="ButtonSize.ExtraSmall" Click="@(args => { selectedDetail = det; selectedContractDetailId = det.ContractDetailId; popup.ToggleAsync(popButton.Element); })" />
+                                                            }
+                                                        }
+                                                        else if (!det.IsCancelled)
+                                                        {
+                                                            <RadzenButton @ref=popButtonDatePickup Icon="add" title="Add Pickup Date" class="rz-ms-2"
+                                                                          ButtonStyle="ButtonStyle.Base" ButtonType="ButtonType.Button"
+                                                                          Size="ButtonSize.ExtraSmall" Click="@(args => { selectedDetail = det; selectedContractDetailId = det.ContractDetailId; popupDatePickup.ToggleAsync(popButtonDatePickup.Element); })" />
+                                                        }
+
+                                                    </Template>
+                                                </RadzenDataGridColumn>
+                                            </Columns>
+                                        </RadzenDataGrid>
+
+                                        @* Set Pickup Date Popup *@
+                                        <Popup @ref=popupDatePickup Lazy=true class="my-popup">
+                                            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="rz-p-2">
+                                                <RadzenText TextStyle="TextStyle.Button" Text="Set Pickup Date" />
+                                                <RadzenDatePicker @bind-Value=selectedDatePickup DateFormat="MM/dd/yyyy" ShowTime=false Min="@selectedDateHarvest.AddDays(-1)" />
+                                                <RadzenButton Text="Set" ButtonStyle="ButtonStyle.Base" Click="@(() => SetDatePickup())" />
+                                            </RadzenStack>
+                                        </Popup>
+
+                                        @* Set Harvest Date Popup *@
+                                        <Popup @ref=popupDateHarvest Lazy=true class="my-popup">
+                                            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="rz-p-2">
+                                                <RadzenText TextStyle="TextStyle.Button" Text="Set Harvest Date" />
+                                                <RadzenDatePicker @bind-Value=selectedDateHarvest DateFormat="MM/dd/yyyy" ShowTime=false />
+                                                <RadzenButton Text="Set" ButtonStyle="ButtonStyle.Base" Click="@(() => SetDateHarvest())" />
+                                            </RadzenStack>
+                                        </Popup>
+
+                                        @* Actions Popup *@
+                                        <Popup @ref=popup Lazy=true class="my-popup">
+                                            <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem" class="rz-p-2">
+                                                <RadzenText TextStyle="TextStyle.Button" Text="Actions" />
+                                                @if (selectedDetail.PickupDate.HasValue)
+                                                {
+                                                    <RadzenButton @ref=popButtonDatePickup Text="Change Pickup" ButtonStyle="ButtonStyle.Base" Click="@(args => { popupDatePickup.ToggleAsync(popButtonDatePickup.Element); })" />
+                                                    <RadzenButton Text="Confirm Pickup" ButtonStyle="ButtonStyle.Success" Click="@(() => ConfirmPickup())" />
+                                                }
+
+                                                <RadzenButton Text="Cancelled" ButtonStyle="ButtonStyle.Danger" Shade="Shade.Light" Variant="Variant.Outlined" Click="@(() => CancelTransaction())" />
+
+                                                @if (!selectedDetail.IsPaid)
+                                                {
+                                                    <hr class="umh-card-box">
+                                                    <RadzenButton Text="Paid" ButtonStyle="ButtonStyle.Info" Click="@(() => TransactionPaid())" />
+                                                }
+                                            </RadzenStack>
+                                        </Popup>
+                                    </RadzenTabsItem>
+                                </Tabs>
+                            </RadzenTabs>
+                        </RadzenStack>
+                    </RadzenCard>
+                }
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    private IEnumerable<FarmContractDto>? objList;
+    private IList<FarmContractDto> selectedObjList = new List<FarmContractDto>();
+    private IList<FarmContractDetailDto> selectedDetails = new List<FarmContractDetailDto>();
+    private List<CustomerDto> customers = new();
+
+    EditContext editContext;
+    RadzenDataGrid<FarmContractDto> farmContractGrid;
+    RadzenDataGrid<FarmContractDetailDto> detailsGrid;
+
+    List<FarmContractDto> contractItemToInsert = [];
+    List<FarmContractDto> contractItemToUpdate = [];
+
+    private bool isLoading;
+    private Guid id;
+    private Guid harvestActivityId;
+    private bool hasHarvestActivity = false;
+
+    private Guid farmId;
+    private string farmName = "Loading...";
+
+    private KeyValuePair<decimal, string> contractsExpectedRevenue = new KeyValuePair<decimal, string>(0, "0.00");
+    private KeyValuePair<decimal, string> contractsTotalValue = new KeyValuePair<decimal, string>(0, "0.00");
+    private KeyValuePair<decimal, string> contractsTotalLostValue = new KeyValuePair<decimal, string>(0, "0.00");
+
+    private int contractsApproachingHarvest = 0;
+    private int contractsNew = 0;
+    private int contractsHarvested = 0;
+    private int contractsPickedUp = 0;
+    private int contractsPaid = 0;
+
+    // private bool CanModify(FarmContractDetailDto det) => !det.IsPaid && !det.IsCancelled;
+
+    private List<FarmContractDetailDto> contractsExpectedRevenueList = new();
+    private List<FarmContractDetailDto> contractsTotalValueList = new();
+    private List<FarmContractDetailDto> contractsTotalLostValueList = new();
+    private List<FarmContractDetailDto> contractsApproachingHarvestList = new();
+    private List<FarmContractDto> contractsNewList = new();
+    private List<FarmContractDetailDto> contractsHarvestedList = new();
+    private List<FarmContractDto> contractsPickedUpList = new();
+    private List<FarmContractDto> contractsPaidList = new();
+
+    Popup popup;
+    Popup popupDatePickup;
+    Popup popupDateHarvest;
+    RadzenButton popButton;
+    RadzenButton popButtonDatePickup;
+    RadzenButton popButtonDateHarvest;
+    DateTime selectedDatePickup = DateTime.Now.ToLocalTime();
+    DateTime selectedDateHarvest = DateTime.Now.ToLocalTime();
+    Guid selectedContractDetailId;
+    FarmContractDetailDto selectedDetail;
+    FarmContractDto selectedMaster;
+
+    private DateTime today = DateTime.Today;
+    private DateTime startDate;
+    private DateTime endDate;
+    private DateTime previousStartDate;
+    private DateTime previousEndDate;
+    private bool showActiveRange = false;
+    private string activeRangeMessage = "Loading Contracts...";
+
+    private bool hasLoadedSecondaryData = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync().ConfigureAwait(false);
+
+        editContext = new EditContext(new FarmContractDto());
+        // await ShowLoading().ConfigureAwait(false);
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+            _ = Task.Run(async () =>
+            {
+                SetThisMonth();
+                await LoadList().ConfigureAwait(false);
+
+                await LoadCustomers().ConfigureAwait(false);
+
+                await LoadKpis().ConfigureAwait(false);
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        //int maxRetries = 5;
+        //int retryCount = 0;
+        //do
+        //{
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Settings.FarmId;
+        farmName = Settings.FarmName;
+
+        //if (farmId == Guid.Empty)
+        //{
+        //    retryCount++;
+        //    await Task.Delay(1000); // wait 1 second before retry
+        //}
+        //} while (farmId == Guid.Empty && retryCount < maxRetries);
+
+        if (farmId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Failed to load valid farm settings after multiple attempts.", "Oops");
+        }
+    }
+
+    private async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    private async Task LoadList()
+    {
+        // var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        // new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        var response = await FarmContractService.GetFarmContractsAsync(Settings.FarmId, startDate, endDate).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            objList = response.Data;
+            var obj = objList.FirstOrDefault();
+            if (obj == null)
+                obj = new FarmContractDto();
+
+            editContext = new EditContext(obj);
+            selectedObjList = new List<FarmContractDto>() { obj };
+
+            selectedMaster = obj;
+            selectedDetails = obj.FarmContractDetails.ToList();
+
+            showActiveRange = true;
+            activeRangeMessage = $"Showing contracts from {startDate:MMM dd, yyyy} to {endDate:MMM dd, yyyy}";
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+
+        // DialogService.Close(null);
+    }
+
+    private async Task LoadKpis()
+    {
+        try
+        {
+            var r1 = await ReportService.GetContractsExpectedRevenueAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r1.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load expected revenue value of contracts.");
+                return;
+            }
+            contractsExpectedRevenueList = r1.Data;
+            var expectedRevenue = contractsExpectedRevenueList.Sum(x => x.TotalAmount);
+            var expectedRevenueString = expectedRevenue.ToNumberCompact();
+            contractsExpectedRevenue = new KeyValuePair<decimal, string>(expectedRevenue, expectedRevenueString);
+        }
+        catch { }
+
+        try
+        {
+            var r1 = await ReportService.GetContractsTotalValueAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r1.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load total value of contracts.");
+                return;
+            }
+            contractsTotalValueList = r1.Data;
+            var contractsTotal = contractsTotalValueList.Sum(x => x.TotalAmount);
+            var contractsTotalString = contractsTotal.ToNumberCompact();
+            contractsTotalValue = new KeyValuePair<decimal, string>(contractsTotal, contractsTotalString);
+        }
+        catch { }
+
+        try
+        {
+            var r1 = await ReportService.GetContractsTotalLostValueAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r1.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load total lost value of contracts.");
+                return;
+            }
+            contractsTotalLostValueList = r1.Data;
+            var contractsTotalLost = contractsTotalLostValueList.Sum(x => x.TotalAmount);
+            var contractsTotalLostString = contractsTotalLost.ToNumberCompact();
+            contractsTotalLostValue = new KeyValuePair<decimal, string>(contractsTotalLost, contractsTotalLostString);
+        }
+        catch { }
+
+        try
+        {
+            var r2 = await ReportService.GetContractsApproachingHarvestAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r2.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load contracts approaching harvest.");
+                return;
+            }
+            contractsApproachingHarvestList = r2.Data;
+            contractsApproachingHarvest = contractsApproachingHarvestList.Count;
+        }
+        catch { }
+
+        try
+        {
+            var r3 = await ReportService.GetContractsNewAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r3.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load new contracts.");
+                return;
+            }
+            contractsNewList = r3.Data;
+            contractsNew = contractsNewList.Count;
+        }
+        catch { }
+
+        try
+        {
+            var r4 = await ReportService.GetContractsHarvestedAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r4.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load harvested contracts.");
+                return;
+            }
+            contractsHarvestedList = r4.Data;
+            contractsHarvested = contractsHarvestedList.Count;
+        }
+        catch { }
+
+        try
+        {
+            var r5 = await ReportService.GetContractsConfirmedPickeUpsAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r5.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load confirmed pickup contracts.");
+                return;
+            }
+            contractsPickedUpList = r5.Data;
+            contractsPickedUp = contractsPickedUpList.Count;
+        }
+        catch { }
+
+        try
+        {
+            var r6 = await ReportService.GetContractsPaidAsync(farmId, startDate, endDate).ConfigureAwait(false);
+            if (!r6.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load paid contracts.");
+                return;
+            }
+            contractsPaidList = r6.Data;
+            contractsPaid = contractsPaidList.Count;
+        }
+        catch { }
+
+        StateHasChanged();
+    }
+
+    private async Task OpenDialog(Guid id)
+    {
+        var result = await DialogService.OpenAsync<ContractDialog>("Contract",
+                    new Dictionary<string, object> { { "ObjId", id } },
+                    new DialogOptions()
+                    {
+                        Width = "50vw",
+                        Height = "80vh",
+                    });
+        // refresh grid if the dialog returns true
+        if (result != null)
+        {
+            await GridReload();
+        }
+    }
+
+    private async Task GridReload()
+    {
+        await LoadList();
+        await LoadKpis();
+    }
+
+    private async Task LoadCustomers()
+    {
+        var response = await CustomerService.GetCustomersContractEligibleAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            customers = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task Delete(FarmContractDto obj)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to delete contract for '{obj.CustomerName}'?",
+                "Confirm Delete",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await FarmContractService.DeleteFarmContractAsync(obj.ContractId).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess("Delete Successful");
+                // refresh grid
+                await LoadList();
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+    }
+
+    void ResetGrid1()
+    {
+        contractItemToInsert.Clear();
+        contractItemToUpdate.Clear();
+    }
+
+    void ResetGrid1(FarmContractDto contractObj)
+    {
+        contractItemToInsert.Remove(contractObj);
+        contractItemToUpdate.Remove(contractObj);
+    }
+
+    async Task EditRowGrid1(FarmContractDto contractObj)
+    {
+        if (!farmContractGrid.IsValid) return;
+
+        contractItemToUpdate.Add(contractObj);
+        await farmContractGrid.EditRow(contractObj);
+    }
+
+    async Task OnUpdateRowGrid1(FarmContractDto contractObj)
+    {
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        ResetGrid1(contractObj);
+
+        var obj = await FarmContractService.UpdateFarmContractAsync(contractObj).ConfigureAwait(false);
+        if (obj is not null)
+        {
+            await farmContractGrid.Reload();
+            await LoadList().ConfigureAwait(false);
+            await NotificationService.ShowSuccess("Contract item successfully updated.");
+        }
+        else
+            await NotificationService.ShowError("Unable to update contract item.");
+
+        DialogService.Close(null);
+    }
+
+    async Task SaveRowGrid1(FarmContractDto contractObj)
+    {
+        contractObj.FarmId = farmId;
+        await farmContractGrid.UpdateRow(contractObj);
+    }
+
+    void CancelEditGrid1(FarmContractDto contractObj)
+    {
+        ResetGrid1(contractObj);
+
+        farmContractGrid.CancelEditRow(contractObj);
+    }
+
+    async Task DeleteRowGrid1(FarmContractDto contractObj)
+    {
+        ResetGrid1(contractObj);
+
+        if (objList.Contains(contractObj))
+        {
+            var confirm = await DialogService.Confirm(
+                $"Are you sure you want to delete contract for '{contractObj.CustomerName}'?",
+                "Confirm Delete",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+            if (confirm == true)
+            {
+                var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+                var obj = await FarmContractService.DeleteFarmContractAsync(contractObj.ContractId).ConfigureAwait(false);
+                if (obj is not null)
+                {
+                    await farmContractGrid.Reload();
+                    await LoadList().ConfigureAwait(false);
+                    await NotificationService.ShowSuccess("Contract item successfully deleted.");
+                }
+                else
+                    await NotificationService.ShowError("Unable to delete contract item.");
+
+                DialogService.Close(null);
+            }
+        }
+        else
+        {
+            farmContractGrid.CancelEditRow(contractObj);
+            await farmContractGrid.Reload();
+        }
+    }
+
+    async Task PrintReceipt(FarmContractDto contractObj)
+    {
+        var confirm = await DialogService.Confirm(
+                        $"Click Yes to continue receipt generation. This includes all PAID contract details.",
+                        "Confirm Receipt Printing",
+                        new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+                    );
+
+        if (confirm == true)
+        {
+            ResetGrid1(contractObj);
+
+            if (objList.Contains(contractObj))
+            {
+                var paymentObj = new PaymentDetailsDto
+                {
+                    ActualPaidAmount = contractObj.FarmContractDetails.Where(x => x.IsPaid).Sum(x => x.TotalAmount),
+                    ContractId = contractObj.ContractId,
+                    BuyerId = contractObj.CustomerId,
+                    BuyerAddress = contractObj.CustomerAddress,
+                    BuyerContactNo = contractObj.CustomerContactInfo,
+                    BuyerName = contractObj.CustomerName,
+                    ReceivedBy = UserState.Username,
+                    SystemRefNo = $"{NavigationManager.BaseUri}verification/receipt/{{0}}" // This will be replaced with the actual receipt ID after generation
+                };
+                var result = await DialogService.OpenAsync<PaymentDialog>("Payment Details",
+                    new Dictionary<string, object> {
+                        { "Model", paymentObj }
+                    },
+                    new DialogOptions()
+                    {
+                        Width = "30vw",
+                        Height = "80vh",
+                    });
+
+                if (result != null)
+                {
+
+                }
+            }
+            else
+            {
+                farmContractGrid.CancelEditRow(contractObj);
+                await farmContractGrid.Reload();
+            }
+        }
+    }
+
+    async Task InsertRowGrid1()
+    {
+        if (!farmContractGrid.IsValid) return;
+
+        var contractObj = new FarmContractDto();
+        contractObj.FarmId = farmId;
+        contractObj.Status = ContractStatus.NEW.ToString();
+        contractItemToInsert.Add(contractObj);
+
+        await farmContractGrid.InsertRow(contractObj);
+    }
+
+    async Task InsertAfterRowGrid1(FarmContractDto row)
+    {
+        if (!farmContractGrid.IsValid) return;
+
+        var contractObj = new FarmContractDto();
+        contractObj.FarmId = farmId;
+        contractItemToInsert.Add(contractObj);
+
+        await farmContractGrid.InsertAfterRow(contractObj, row);
+    }
+
+    async Task OnCreateRowGrid1(FarmContractDto contractObj)
+    {
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        contractObj.FarmId = farmId;
+        var obj = await FarmContractService.CreateFarmContractAsync(contractObj).ConfigureAwait(false);
+        if (obj is not null)
+        {
+            contractItemToInsert.Remove(contractObj);
+            await LoadList().ConfigureAwait(false);
+            await NotificationService.ShowSuccess("New contract successfully created.");
+        }
+        else
+            await NotificationService.ShowError("Unable to create new contract.");
+
+        DialogService.Close(null);
+    }
+
+    async Task OnRowSelect(FarmContractDto contractObj)
+    {
+        selectedMaster = contractObj;
+        selectedDetails = contractObj.FarmContractDetails.ToList();
+    }
+
+    async Task AddContractDetails(Guid contractId)
+    {
+        var result = await DialogService.OpenAsync<ContractDetailsDialog>("Contract Details",
+                    new Dictionary<string, object> {
+                        { "ObjId", Guid.Empty },
+                        { "FarmId", farmId },
+                        { "ContractId", contractId },
+                    },
+                    new DialogOptions()
+                    {
+                        Width = "30vw",
+                        Height = "80vh",
+                    });
+        // refresh grid if the dialog returns true
+        if (result == true)
+        {
+            await GridReload();
+        }
+    }
+
+    async Task CreateHarvestToActivity(FarmContractDetailDto contractDetail)
+    {
+        // show radzen confirm dialog to confirm creation of harvest activity
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to create a harvest activity for '{contractDetail.Product}'?",
+            "Confirm Create",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+        );
+        if (confirm == true)
+        {
+            // show busy dialog
+            var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+            var taskId = SystemSettingService.GetSetting<Guid>(SettingName.HARVEST_ACTIVITY_TASK.ToString());
+            var supervisorId = SystemSettingService.GetSetting<Guid>(SettingName.HARVEST_ACTIVITY_SUPERVISOR.ToString());
+
+            var response = await FarmActivityService.CreateHarvestActivityFromContractDetailsAsync(contractDetail, farmId, taskId, supervisorId).ConfigureAwait(false);
+            if (response != null && response.IsSuccess)
+            {
+                harvestActivityId = response.Data?.ActivityId ?? Guid.Empty;
+                hasHarvestActivity = true;
+
+                await NotificationService.ShowSuccess("Harvest activity created successfully.");
+
+                selectedDetail.HasHarvestActivity = true;
+                selectedDetails = selectedDetails.ToList();
+                // reload the details grid
+                await detailsGrid.Reload();
+
+                StateHasChanged();
+            }
+            else
+            {
+                await NotificationService.ShowError($"Error creating harvest activity: {response?.ErrorMessage}", "Oops");
+            }
+
+            DialogService.Close(null);
+        }
+    }
+
+    async Task ConfirmPickup()
+    {
+        if (selectedContractDetailId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Invalid contract detail ID.", "Error");
+            return;
+        }
+
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to confirm this transaction?",
+                "Confirm Pickup",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            // show busy dialog
+            var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            var response = await FarmContractDetailService.ConfirmPickupAsync(selectedContractDetailId).ConfigureAwait(false);
+            if (response != null && response.IsSuccess)
+            {
+                await NotificationService.ShowSuccess("Pickup confirmed successfully.");
+
+                selectedMaster.Status = response.Data?.ContractStatus2;
+                selectedDetail.Status = response.Data?.Status;
+                selectedDetails = selectedDetails.ToList();
+
+                // reload the details grid
+                await detailsGrid.Reload();
+                await farmContractGrid.Reload();
+
+                await LoadKpis().ConfigureAwait(false);
+            }
+            else
+            {
+                await NotificationService.ShowError($"Error confirming pickup: {response?.ErrorMessage}", "Oops");
+            }
+            DialogService.Close(null);
+        }
+    }
+
+    async Task CancelTransaction()
+    {
+        if (selectedContractDetailId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Invalid contract detail ID.", "Error");
+            return;
+        }
+
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to cancel this contract item?",
+                "Cancel Contract Item",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            // show busy dialog
+            var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            var response = await FarmContractDetailService.CancelTransactionAsync(selectedContractDetailId).ConfigureAwait(false);
+            if (response != null && response.IsSuccess)
+            {
+                await NotificationService.ShowSuccess("Contract item successfully cancelled.");
+
+                selectedMaster.Status = response.Data?.ContractStatus2;
+                selectedDetail.Status = response.Data?.Status;
+                selectedDetails = selectedDetails.ToList();
+
+                // reload the details grid
+                await detailsGrid.Reload();
+                await farmContractGrid.Reload();
+
+                await LoadKpis().ConfigureAwait(false);
+            }
+            else
+            {
+                await NotificationService.ShowError($"Error cancelling contract itemp: {response?.ErrorMessage}", "Oops");
+            }
+            DialogService.Close(null);
+        }
+    }
+
+    async Task RecoverHarvest()
+    {
+        if (selectedContractDetailId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Invalid contract detail ID.", "Error");
+            return;
+        }
+
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to recover this produce?",
+                "Recover Produce",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            // show busy dialog
+            var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            var response = await FarmContractDetailService.RecoverHarvestAsync(selectedContractDetailId).ConfigureAwait(false);
+            if (response != null && response.IsSuccess)
+            {
+                // show success notification
+                await NotificationService.ShowSuccess("Produce successfully recovered. This produce can now be traded for sale, donate, or declared as spoilage.");
+
+                //selectedMaster.Status = response.Data?.ContractStatus2;
+                selectedDetail.Status = response.Data?.Status;
+                selectedDetails = selectedDetails.ToList();
+
+                // reload the details grid
+                await detailsGrid.Reload();
+                await farmContractGrid.Reload();
+
+                //await LoadKpis().ConfigureAwait(false);
+                StateHasChanged();
+            }
+            else
+            {
+                await NotificationService.ShowError($"Error recovering produce: {response?.ErrorMessage}", "Oops");
+            }
+            DialogService.Close(null);
+        }
+    }
+
+    async Task TransactionPaid()
+    {
+        if (selectedContractDetailId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Invalid contract detail ID.", "Error");
+            return;
+        }
+
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to mark this transaction as paid?",
+                "Confirm Payment",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            // show busy dialog
+            var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            var response = await FarmContractDetailService.MarkTransactionAsPaidAsync(selectedContractDetailId).ConfigureAwait(false);
+            if (response != null && response.IsSuccess)
+            {
+                await NotificationService.ShowSuccess("Transaction marked as paid successfully.");
+
+                selectedMaster.Status = response.Data?.ContractStatus2;
+                selectedDetail.Status = response.Data?.Status;
+                selectedDetail.PickupConfirmed = response.Data?.PickupConfirmed ?? false;
+                selectedDetails = selectedDetails.ToList();
+
+                // reload the details grid
+                await detailsGrid.Reload();
+                await farmContractGrid.Reload();
+
+                await LoadKpis().ConfigureAwait(false);
+            }
+            else
+            {
+                await NotificationService.ShowError($"Error marking transaction as paid: {response?.ErrorMessage}", "Oops");
+            }
+            DialogService.Close(null);
+        }
+    }
+
+    async Task SetDatePickup()
+    {
+        if (selectedContractDetailId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Invalid contract detail ID.", "Error");
+            return;
+        }
+
+        if (selectedDetail.PickupDate == selectedDatePickup)
+        {
+            await NotificationService.ShowError("Select a different pickup date.", "Error");
+            return;
+        }
+
+        //Console.WriteLine($"Setting pickup date to: {selectedDatePickup}");
+        var response = await FarmContractDetailService.SetPickupDateAsyncAsync(selectedContractDetailId, selectedDatePickup.Date.ToLocalTime()).ConfigureAwait(false);
+        if (response != null && response.IsSuccess)
+        {
+            await NotificationService.ShowSuccess("Pickup date set successfully.");
+
+            selectedDetail.PickupDate = response.Data?.PickupDate;
+            selectedDetails = selectedDetails.ToList();
+            // reload the details grid
+            await detailsGrid.Reload();
+            StateHasChanged();
+        }
+        else
+        {
+            await NotificationService.ShowError($"Error setting pickup date: {response?.ErrorMessage}", "Oops");
+        }
+        await popupDateHarvest.CloseAsync();
+    }
+
+    async Task SetDateHarvest()
+    {
+        if (selectedContractDetailId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Invalid contract detail ID.", "Error");
+            return;
+        }
+
+        //Console.WriteLine($"Setting harvest date to: {selectedDateHarvest}");
+        var response = await FarmContractDetailService.SetHarvestDateAsyncAsync(selectedContractDetailId, selectedDateHarvest.Date.ToLocalTime()).ConfigureAwait(false);
+        if (response != null && response.IsSuccess)
+        {
+            await NotificationService.ShowSuccess("Harvest date set successfully.");
+
+            selectedDetail.HarvestDate = response.Data?.HarvestDate;
+            selectedDetails = selectedDetails.ToList();
+            // reload the details grid
+            await detailsGrid.Reload();
+            StateHasChanged();
+        }
+        else
+        {
+            await NotificationService.ShowError($"Error setting harvest date: {response?.ErrorMessage}", "Oops");
+        }
+        await popupDateHarvest.CloseAsync();
+    }
+
+    void ShowTooltip(ElementReference el, string tooltip) => TooltipService.Open(el, tooltip, new TooltipOptions { Duration = 5000 });
+
+    void SetThisMonth()
+    {
+        startDate = new DateTime(today.Year, today.Month, 1);
+        endDate = startDate.AddMonths(1).AddDays(-1);
+    }
+
+    async Task TryReloadList()
+    {
+        //Console.WriteLine("TryReloadContracts");
+        if (startDate != previousStartDate || endDate != previousEndDate)
+        {
+            //Console.WriteLine("startDate != previousStartDate || endDate != previousEndDate");
+            //previousStartDate = startDate;
+            //previousEndDate = endDate;
+
+            await LoadList().ConfigureAwait(false);
+            await LoadKpis().ConfigureAwait(false);
+        }
+    }
+
+    async Task OnPresetClicked(RadzenSplitButtonItem item)
+    {
+        if (item == null)
+        {
+            SetThisMonth();
+            return;
+        }
+
+        activeRangeMessage = "Please wait...";
+
+        previousStartDate = startDate;
+        previousEndDate = endDate;
+
+        //Console.WriteLine($"previousStartDate: {previousStartDate}");
+        //Console.WriteLine($"previousEndDate: {previousEndDate}");
+        //Console.WriteLine($"item.Value: {item.Value}");
+
+        switch (item.Value)
+        {
+            case "Last6Months":
+                var last6Months = today.AddMonths(-6);
+                startDate = new DateTime(last6Months.Year, last6Months.Month, 1);
+                endDate = new DateTime(today.Year, today.Month, 1).AddDays(-1);
+                break;
+
+            case "LastYear":
+                startDate = new DateTime(today.Year - 1, 1, 1);
+                endDate = new DateTime(today.Year - 1, 12, 31);
+                break;
+
+            case "Custom":
+                var result = await DialogService.OpenAsync<CustomDateRangeDialog>("Custom Date Range",
+                    new Dictionary<string, object>()
+                    {
+                        { "AllowFuture", true }
+                    },
+                    new DialogOptions() { Width = "400px", Height = "350px" });
+
+                if (result is ValueTuple<DateOnly, DateOnly> range)
+                {
+                    startDate = range.Item1.ToDateTime(TimeOnly.MinValue);
+                    endDate = range.Item2.ToDateTime(TimeOnly.MinValue);
+                    //Console.WriteLine($"range.Item1: {range.Item1}");
+                    //Console.WriteLine($"range.Item2: {range.Item2}");
+                }
+                break;
+
+            default:
+                //"ThisMonth":
+                SetThisMonth();
+                break;
+        }
+
+        await TryReloadList().ConfigureAwait(false);
+    }
+
+    async Task OpenSideDialog()
+    {
+        string title = "Contracts Data Analysis";
+        string prompt = "Analyze the farm contracts data and provide insights on trends, possible losses, and possible revenue streams.";
+
+        var data = new
+        {
+            TotalExpectedRevenue = contractsExpectedRevenue.Key,
+            TotalContractsValue = contractsTotalValue.Key,
+            TotalContractsLostValue = contractsTotalLostValue.Key,
+            ContractsData = objList
+        };
+        string jsonData = System.Text.Json.JsonSerializer.Serialize(data);
+
+        await DialogService.OpenSideAsync<DataInsightSideDialog>("Data Insight",
+        parameters: new Dictionary<string, object>
+        {
+            { "JsonData", jsonData },
+            { "Prompt", prompt },
+            { "Title", title }
+        },
+        options: new SideDialogOptions
+        {
+            CloseDialogOnOverlayClick = true,
+            Position = DialogPosition.Right,
+            ShowMask = false
+        });
+    }
+}

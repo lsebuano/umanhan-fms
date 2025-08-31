@@ -1,0 +1,485 @@
+﻿@page "/farm-sales"
+@using Umanhan.Shared.Extensions
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject SystemSettingService SystemSettingService
+@inject AppNotificationService NotificationService
+@inject TooltipService TooltipService
+@inject ReportService ReportService
+@inject WebAppSettingService AppSettingService
+
+<PermissionView Permission="Finance.Full">
+    <ChildContent>
+        <PageTitle>Farm Sales</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/farm-sales" Text="Farm Sales" />
+        </RadzenBreadCrumb>
+        <RadzenRow>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" class="rz-my-8">
+                <RadzenText TextStyle="TextStyle.H5">Farm Sales</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@farmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(farmName))" />
+            </RadzenStack>
+            <div class="rz-ms-auto">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenCard Variant="Variant.Outlined" class="rz-mt-2 umh-badge">
+                        <RadzenText TextStyle="TextStyle.Caption">@activeRangeMessage</RadzenText>
+                    </RadzenCard>
+                    @if (showActiveRange)
+                    {
+                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Icon="filter_alt" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Lighter">
+                            <ChildContent>
+                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                <RadzenSplitButtonItem Text="Current Year" Value="CurrentYear" />
+                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                            </ChildContent>
+                        </RadzenSplitButton>
+                    }
+                    else
+                    {
+                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Variant="Variant.Text" Icon="filter_alt">
+                            <ChildContent>
+                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                <RadzenSplitButtonItem Text="Current Year" Value="CurrentYear" />
+                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                            </ChildContent>
+                        </RadzenSplitButton>
+                    }
+                </RadzenStack>
+            </div>
+        </RadzenRow>
+        <RadzenRow>
+            <RadzenColumn SizeMD="10">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenCard Variant="Variant.Flat" class="umh-width-200px">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Total Sales</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Total sales from settled contracts."))" />
+                        </RadzenStack>
+                        <RadzenText TextStyle="TextStyle.H5" class="" title="@totalRevenue.Key.ToString("n2")">@totalRevenue.Value</RadzenText>
+                    </RadzenCard>
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Total Quantity Sold</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Total quantity sold per unit."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                            @foreach (var item in quantitiesSoldPerUnit)
+                            {
+                                <RadzenBadge IsPill=true BadgeStyle="BadgeStyle.Base" Text="@item.Unit" />
+                                <RadzenText TextStyle="TextStyle.Body1" class="">@item.Quantity.ToString("n0")</RadzenText>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Top-Selling Products</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Top 3 selling products."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                            @foreach (var item in topSellingProducts)
+                            {
+                                <RadzenBadge IsPill=true BadgeStyle="BadgeStyle.Base" Text="@item.Product" />
+                                <RadzenText TextStyle="TextStyle.Body1" class="" title="@item.TotalAmount.ToString("n2")">@item.TotalAmountCompact</RadzenText>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="2">
+                <RadzenStack AlignItems="AlignItems.Start">
+                    <RadzenButton Icon="auto_awesome" class="ai-color rz-ms-auto" title="Generate insights" Click="@OpenSideDialog" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow class="rz-mt-5">
+            <RadzenColumn SizeMD="6">
+                @* Month-over-Month Sales Trend *@
+                <RadzenCard Variant="Variant.Flat">
+                    <RadzenText TextStyle="TextStyle.H6">Month-over-Month Sales</RadzenText>
+                    <RadzenChart class="umh-height-300px">
+                        <RadzenColumnSeries Data="@monthlySalesPrevious" CategoryProperty="MonthName" LineType="LineType.Solid" ValueProperty="TotalAmount" Title="@previousYear.ToString()">
+                            <RadzenSeriesDataLabels Visible="false" />
+                        </RadzenColumnSeries>
+                        <RadzenColumnSeries Data="@monthlySalesCurrent" CategoryProperty="MonthName" LineType="LineType.Solid" ValueProperty="TotalAmount" Title="@currentYear.ToString()">
+                            <RadzenSeriesDataLabels Visible="false" />
+                        </RadzenColumnSeries>
+                        <RadzenColumnOptions Radius="5" Width="20" />
+                        <RadzenCategoryAxis Padding="20" />
+                        <RadzenValueAxis Formatter="@FormatAxis">
+                            <RadzenGridLines Visible="true" />
+                            <RadzenAxisTitle Text="Revenue" />
+                        </RadzenValueAxis>
+                    </RadzenChart>
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="6">
+                <RadzenCard Variant="Variant.Flat">
+                    @* Total Sales per Buyer *@
+                    <RadzenText TextStyle="TextStyle.H6">Total Sales per Buyer</RadzenText>
+                    <RadzenChart class="umh-height-300px">
+                        <RadzenPieSeries Data="@monthlySalesCurrentByCustomer" Title="Revenue" CategoryProperty="Customer" ValueProperty="TotalAmount">
+                            <RadzenSeriesDataLabels Visible="false" />
+                        </RadzenPieSeries>
+                    </RadzenChart>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow class="rz-mt-5">
+            <RadzenColumn Size="12">
+                <div class="full-height-container">
+                    <RadzenDataGrid @ref="salesGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true"
+                                    PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                                    Data="@objList" ColumnWidth="160px" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                    EditMode="DataGridEditMode.Single" TItem="FarmContractSaleDto"
+                                    Render="OnRender" GroupFootersAlwaysVisible="true">
+                        <EmptyTemplate>
+                            <p class="umh-no-records">No records to display.</p>
+                        </EmptyTemplate>
+                        <GroupHeaderTemplate>
+                            @context.GroupDescriptor.GetTitle() <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="@(context.Data.Key ?? "")" /> Group items count <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@context.Data.Count.ToString("n0")" />
+                        </GroupHeaderTemplate>
+                        <Columns>
+                            <RadzenDataGridColumn Property="@nameof(FarmContractSaleDto.Customer)" Title="Customer" Width="300px">
+                                <Template Context="sale">
+                                    @sale.Customer
+                                </Template>
+                                <GroupFooterTemplate>
+                                    Total Amount: <b>@String.Format("{0:n2}", context.Data.Items.Cast<FarmContractSaleDto>().Sum(o => o.TotalAmount))</b>
+                                </GroupFooterTemplate>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="@nameof(FarmContractSaleDto.Date)" Title="Sales Date" Width="130px" FormatString="{0:MM/dd/yyyy}" />
+                            <RadzenDataGridColumn Title="Product" Width="300px">
+                                <Template Context="sales">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Light" Text="@sales.Product" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Title="Unit" Width="130px">
+                                <Template Context="sales">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Shade="Shade.Light" Text="@sales.Unit" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="@nameof(FarmContractSaleDto.Quantity)" Title="Quantity" Width="130px" />
+                            <RadzenDataGridColumn Property="@nameof(FarmContractSaleDto.UnitPrice)" Title="Unit Price" Width="130px" />
+                            <RadzenDataGridColumn Property="@nameof(FarmContractSaleDto.TotalAmount)" Title="Total Amount" Width="130px" FormatString="{0:n2}" TextAlign="TextAlign.Right" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </div>
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    private RadzenDataGrid<FarmContractSaleDto> salesGrid;
+
+    private IEnumerable<FarmContractSaleDto>? objList;
+    private IList<FarmContractSaleDto> selectedObjList = [];
+    private IList<FarmContractSaleDto> topSellingProducts = [];
+    private IList<FarmContractSaleDto> quantitiesSoldPerUnit = [];
+
+    private IList<MonthlySalesDto> monthlySalesCurrent = [];
+    private IList<MonthlySalesDto> monthlySalesPrevious = [];
+    private IList<MonthlySalesDto> monthlySalesCurrentByCustomer = [];
+
+    private Guid farmId;
+    private string farmName = "Loading...";
+
+    private DateTime today = DateTime.Today;
+    private DateTime startDate;
+    private DateTime endDate;
+    private DateTime previousStartDate;
+    private DateTime previousEndDate;
+    private bool showActiveRange = false;
+    private string activeRangeMessage = "Loading Contracts...";
+
+    private List<FarmContractSaleDto> totalRevenueList = new();
+
+    private KeyValuePair<decimal, string> totalRevenue = new KeyValuePair<decimal, string>(0, "0.00");
+    private decimal totalQuantitySold = 0;
+
+    private int currentYear;
+    private int previousYear;
+
+    private bool hasLoadedSecondaryData = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync().ConfigureAwait(false);
+
+        currentYear = today.Year;
+        previousYear = currentYear - 1;
+
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+            _ = Task.Run(async () =>
+            {
+                SetThisMonth();
+                await LoadList().ConfigureAwait(false);
+                await LoadKpis().ConfigureAwait(false);
+                await LoadCharts().ConfigureAwait(false);
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+        }
+    }
+
+    void OnRender(DataGridRenderEventArgs<FarmContractSaleDto> args)
+    {
+        if (args.FirstRender)
+        {
+            args.Grid.Groups.Add(new GroupDescriptor() { Property = "Customer", Title = "Customer" });
+            StateHasChanged();
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Settings.FarmId;
+        farmName = Settings.FarmName;
+
+        // if (farmId == Guid.Empty)
+        // {
+        //     await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+        //     farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
+        // }
+    }
+
+    private async Task LoadList()
+    {
+        // var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        // new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        var response = await ReportService.GetFarmSalesAsync(Settings.FarmId, startDate, endDate).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            objList = response.Data;
+
+            showActiveRange = true;
+            activeRangeMessage = $"Showing contracts from {startDate:MMM dd, yyyy} to {endDate:MMM dd, yyyy}";
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+
+        // DialogService.Close(null);
+    }
+
+    private async Task LoadKpis()
+    {
+        try
+        {
+            var response = await ReportService.GetFarmSalesAsync(Settings.FarmId, startDate, endDate).ConfigureAwait(false);
+            if (!response.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load farm sales data.");
+                return;
+            }
+            totalRevenueList = response.Data;
+            var total = totalRevenueList.Sum(x => x.TotalAmount);
+            var totalString = total.ToNumberCompact();
+            totalRevenue = new KeyValuePair<decimal, string>(total, totalString);
+
+            topSellingProducts = totalRevenueList
+                .GroupBy(x => x.Product)
+                .Select(g => new FarmContractSaleDto
+                {
+                    Product = g.Key,
+                    Quantity = g.Sum(x => x.Quantity),
+                    TotalAmount = g.Sum(x => x.TotalAmount)
+                })
+                .OrderByDescending(x => x.Quantity)
+                .Take(3)
+                .ToList();
+
+            quantitiesSoldPerUnit = totalRevenueList
+                .GroupBy(x => x.Unit)
+                .Select(g => new FarmContractSaleDto
+                {
+                    Unit = g.Key,
+                    Quantity = g.Sum(x => x.Quantity),
+                    TotalAmount = g.Sum(x => x.TotalAmount)
+                })
+                .OrderByDescending(x => x.Quantity)
+                .Take(3)
+                .ToList();
+        }
+        catch { }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadCharts()
+    {
+        try
+        {
+            var response = await ReportService.GetMonthlySalesAsync(Settings.FarmId, currentYear).ConfigureAwait(false);
+            if (!response.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load current monthly sales data.");
+                return;
+            }
+            monthlySalesCurrent = response.Data;
+        }
+        catch { }
+
+        try
+        {
+            var response = await ReportService.GetMonthlySalesAsync(Settings.FarmId, previousYear).ConfigureAwait(false);
+            if (!response.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load previous monthly sales data.");
+                return;
+            }
+            monthlySalesPrevious = response.Data;
+        }
+        catch { }
+
+        try
+        {
+            var response = await ReportService.GetMonthlySalesByCustomerAsync(Settings.FarmId, currentYear).ConfigureAwait(false);
+            if (!response.IsSuccess)
+            {
+                await NotificationService.ShowError("Failed to load current monthly sales by customer data.");
+                return;
+            }
+            monthlySalesCurrentByCustomer = response.Data;
+        }
+        catch { }
+
+        StateHasChanged();
+    }
+
+    void ShowTooltip(ElementReference el, string tooltip) => TooltipService.Open(el, tooltip, new TooltipOptions { Duration = 5000 });
+
+    void SetThisMonth()
+    {
+        startDate = new DateTime(today.Year, today.Month, 1);
+        endDate = startDate.AddMonths(1).AddDays(-1);
+    }
+
+    string FormatAxis(object value)
+    {
+        return ((double)value).ToString("n2");
+    }
+
+    async Task TryReloadList()
+    {
+        //Console.WriteLine("TryReloadList");
+        if (startDate != previousStartDate || endDate != previousEndDate)
+        {
+            //Console.WriteLine("startDate != previousStartDate || endDate != previousEndDate");
+            //previousStartDate = startDate;
+            //previousEndDate = endDate;
+
+            await LoadList().ConfigureAwait(false);
+            await LoadKpis().ConfigureAwait(false);
+            await LoadCharts().ConfigureAwait(false);
+        }
+    }
+
+    async Task OnPresetClicked(RadzenSplitButtonItem item)
+    {
+        if (item == null)
+        {
+            SetThisMonth();
+            return;
+        }
+
+        activeRangeMessage = "Please wait...";
+
+        previousStartDate = startDate;
+        previousEndDate = endDate;
+
+        //Console.WriteLine($"previousStartDate: {previousStartDate}");
+        //Console.WriteLine($"previousEndDate: {previousEndDate}");
+        //Console.WriteLine($"item.Value: {item.Value}");
+
+        switch (item.Value)
+        {
+            case "Last6Months":
+                var last6Months = today.AddMonths(-6);
+                startDate = new DateTime(last6Months.Year, last6Months.Month, 1);
+                endDate = new DateTime(today.Year, today.Month, 1).AddDays(-1);
+                break;
+
+            case "CurrentYear":
+                startDate = new DateTime(today.Year, 1, 1);
+                endDate = new DateTime(today.Year, 12, 31);
+                break;
+
+            case "LastYear":
+                startDate = new DateTime(today.Year - 1, 1, 1);
+                endDate = new DateTime(today.Year - 1, 12, 31);
+                break;
+
+            case "Custom":
+                var result = await DialogService.OpenAsync<CustomDateRangeDialog>("Custom Date Range",
+                    new Dictionary<string, object>()
+                    {
+                        { "AllowFuture", true }
+                    },
+                    new DialogOptions() { Width = "400px", Height = "350px" });
+
+                if (result is ValueTuple<DateOnly, DateOnly> range)
+                {
+                    startDate = range.Item1.ToDateTime(TimeOnly.MinValue);
+                    endDate = range.Item2.ToDateTime(TimeOnly.MinValue);
+                }
+                break;
+
+            default:
+                //"ThisMonth":
+                SetThisMonth();
+                break;
+        }
+
+        await TryReloadList().ConfigureAwait(false);
+    }
+
+    async Task OpenSideDialog()
+    {
+        string title = "Sales Data Analysis";
+        string prompt = "Analyze the farm sales data and provide insights on trends, top products, and customer behavior.";
+
+        var data = new
+        {
+            TotalRevenue = totalRevenue.Key,
+            TopSellingProducts = topSellingProducts.Select(x => new { x.Product, x.TotalAmountCompact }),
+            QuantitiesSoldPerUnit = quantitiesSoldPerUnit.Select(x => new { x.Unit, x.Quantity }),
+            MonthlySalesCurrent = monthlySalesCurrent,
+            MonthlySalesPrevious = monthlySalesPrevious,
+            MonthlySalesCurrentByCustomer = monthlySalesCurrentByCustomer
+        };
+        string jsonData = System.Text.Json.JsonSerializer.Serialize(data);
+        //Console.WriteLine($"OpenSideDialog.jsonData: {jsonData}");
+
+        await DialogService.OpenSideAsync<DataInsightSideDialog>("Data Insight",
+        parameters: new Dictionary<string, object>
+        {
+            { "JsonData", jsonData },
+            { "Prompt", prompt },
+            { "Title", title }
+        },
+        options: new SideDialogOptions
+        {
+            CloseDialogOnOverlayClick = true,
+            Position = DialogPosition.Right,
+            ShowMask = false
+        });
+    }
+}

@@ -1,0 +1,256 @@
+﻿@inject DialogService DialogService
+@inject ModuleService ModuleService
+@inject PermService PermService
+@inject RoleService RoleService
+@inject RolePermissionService RolePermissionService
+@inject AppNotificationService NotificationService
+
+<RadzenDataGrid @ref="permissionsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="15" AllowSorting="true" EditMode="@editMode"
+                Data="@permissions" TItem="RolePermissionDto" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset" Page="@Reset" Filter="@Reset" ColumnWidth="140px">
+    <HeaderTemplate>
+        <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add" Text="Add" Click="@InsertRow" />
+    </HeaderTemplate>
+    <Columns>
+        <RadzenDataGridColumn Context="permission" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" FrozenPosition="FrozenColumnPosition.Left">
+            <Template Context="permission">
+                @* <RadzenButton Icon="add_circle" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" Click="@(() => InsertAfterRow(permission))" title="Add new row after this row" Disabled="@(editMode == DataGridEditMode.Single && permissionsToInsert.Count() > 0)" /> *@
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRow(permission))" @onclick:stopPropagation="true" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRow(permission))" @onclick:stopPropagation="true" />
+            </Template>
+            <EditTemplate Context="permission">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(permission))" aria-label="Save" />
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEdit(permission))" aria-label="Cancel" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRow(permission))" aria-label="Delete" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="ModuleName" Title="Module" Width="380px">
+            <EditTemplate Context="module">
+                <RadzenDropDown @bind-Value="module.ModuleId" Data="@modules" TextProperty="@nameof(ModuleDto.Name)" ValueProperty="@nameof(ModuleDto.ModuleId)" class="umh-width-100 rz-display-block"
+                                InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "Select module" }})" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="PermissionName" Title="Permission" Width="180px">
+            <EditTemplate Context="perm">
+                <RadzenDropDown @bind-Value="perm.PermissionId" Data="@perms" TextProperty="@nameof(PermissionDto.Name)" ValueProperty="@nameof(PermissionDto.PermissionId)" class="umh-width-100 rz-display-block"
+                                InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "Select permission" }})" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; } //<--roleid
+    private Guid objId;
+    private string title = "Message";
+    private string message;
+    private bool isSaving;
+    private RadzenDataGrid<RolePermissionDto> permissionsGrid;
+    private IEnumerable<RolePermissionDto> permissions;
+    private IEnumerable<ModuleDto> modules;
+    private IEnumerable<PermissionDto> perms;
+    private IList<string> values = new string[] { };
+    private DataGridEditMode editMode = DataGridEditMode.Single;
+    private List<RolePermissionDto> permissionsToInsert = new List<RolePermissionDto>();
+    private List<RolePermissionDto> permissionsToUpdate = new List<RolePermissionDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        await LoadModules().ConfigureAwait(false);
+        await LoadPerms().ConfigureAwait(false);
+        //await LoadPermissions().ConfigureAwait(false);
+        //if (objId != ObjId)
+        //{
+        //    objId = ObjId;
+        //    await LoadRolePermissions().ConfigureAwait(false);
+        //}
+        DialogService.Close(true);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        //await base.OnParametersSetAsync().ConfigureAwait(false);
+        if (objId != ObjId)
+        {
+            objId = ObjId;
+            await LoadRolePermissions().ConfigureAwait(false);
+        }
+    }
+
+    void Reset()
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>>>>>>>>Reset");
+        permissionsToInsert.Clear();
+        permissionsToUpdate.Clear();
+    }
+
+    void Reset(RolePermissionDto permission)
+    {
+        permissionsToInsert.Remove(permission);
+        permissionsToUpdate.Remove(permission);
+    }
+
+    async Task LoadRolePermissions()
+    {
+        //var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        //    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        var response = await RolePermissionService.GetPermissionsForRoleAsync(ObjId).ConfigureAwait(false);
+        if (response.IsSuccess)
+            permissions = response.Data?.OrderBy(x => x.ModuleName).AsEnumerable() ?? [];
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+
+        //DialogService.Close(true);
+    }
+
+    async Task LoadModules()
+    {
+        var response = await ModuleService.GetAllModulesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            modules = response.Data?.OrderBy(x => x.Name).AsEnumerable() ?? [];
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadPerms()
+    {
+        var response = await PermService.GetAllPermissionsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            perms = response.Data?.OrderBy(x => x.Name).AsEnumerable() ?? [];
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task EditRow(RolePermissionDto permission)
+    {
+        if (!permissionsGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            Reset();
+        }
+
+        permission.RoleId = ObjId;
+        permissionsToUpdate.Add(permission);
+        await permissionsGrid.EditRow(permission);
+    }
+
+    async Task OnUpdateRow(RolePermissionDto permission)
+    {
+        Reset(permission);
+
+        var response = await RolePermissionService.UpdateRolePermissionAsync(permission).ConfigureAwait(false);
+        if (response is not null)
+        {
+            await NotificationService.ShowSuccess("Permission updated successfully.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Oops! Something went wrong.");
+        }
+    }
+
+    async Task SaveRow(RolePermissionDto permission)
+    {
+        await permissionsGrid.UpdateRow(permission);
+        await LoadRolePermissions().ConfigureAwait(false);
+    }
+
+    void CancelEdit(RolePermissionDto permission)
+    {
+        Reset(permission);
+
+        permissionsGrid.CancelEditRow(permission);
+
+        // var permissionEntry = dbContext.Entry(permission);
+        // if (permissionEntry.State == EntityState.Modified)
+        // {
+        //     permissionEntry.CurrentValues.SetValues(permissionEntry.OriginalValues);
+        //     permissionEntry.State = EntityState.Unchanged;
+        // }
+    }
+
+    async Task DeleteRow(RolePermissionDto permission)
+    {
+        Reset(permission);
+
+        if (permissions.Contains(permission))
+        {
+            var response = await RolePermissionService.DeleteRolePermissionAsync(permission.RolePermissionId).ConfigureAwait(false);
+            if (response is not null)
+            {
+                await permissionsGrid.Reload();
+                await LoadRolePermissions().ConfigureAwait(false);
+                await NotificationService.ShowSuccess("Permission deleted successfully.");
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+        else
+        {
+            permissionsGrid.CancelEditRow(permission);
+            await permissionsGrid.Reload();
+        }
+    }
+
+    async Task InsertRow()
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>>>>>>>>InsertRow");
+        if (!permissionsGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            //Console.WriteLine(">>>>>>>>>>>>>>>>>>>>editMode == DataGridEditMode.Single");
+            Reset();
+        }
+
+        var permission = new RolePermissionDto();
+        permission.RoleId = ObjId;
+        permissionsToInsert.Add(permission);
+        await permissionsGrid.InsertRow(permission);
+    }
+
+    async Task InsertAfterRow(RolePermissionDto row)
+    {
+        if (!permissionsGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            Reset();
+        }
+
+        var permission = new RolePermissionDto();
+        permission.RoleId = ObjId;
+        permissionsToInsert.Add(permission);
+        await permissionsGrid.InsertAfterRow(permission, row);
+    }
+
+    async Task OnCreateRow(RolePermissionDto permission)
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>>>>>>>>OnCreateRow");
+        //Console.WriteLine($">>>>>>>>>>>>>>>>>>>>permissionsToInsert: {permissionsToInsert.Count}");
+
+        var result = await RolePermissionService.CreateRolePermissionAsync(permission).ConfigureAwait(false);
+        if (result is not null)
+        {
+            //Console.WriteLine(">>>>>>>>>>>>>>>>>>>>result is not null");
+            permissionsToInsert.Remove(permission);
+            await NotificationService.ShowSuccess("Permission created successfully.");
+        }
+        else
+        {
+            //Console.WriteLine(">>>>>>>>>>>>>>>>>>>>result is null");
+            //Console.WriteLine($">>>>>>>>>>>>>>>>>>>>permissionsToInsert: {permissionsToInsert.Count}");
+            await NotificationService.ShowError("Unable to create new permission.");
+        }
+    }
+}

@@ -1,0 +1,29 @@
+﻿@page "/verification/receipt/{ReceiptId}"
+@attribute [Authorize]
+@inject ContractPaymentService ContractPaymentService
+@inject AppNotificationService NotificationService
+@layout MinimalLayout
+
+<PrintableInvoice ContractPayment="@ContractPayment" />
+
+@code {
+    [Parameter] public string? ReceiptId { get; set; }
+
+    private FarmContractPaymentDto ContractPayment { get; set; } = new FarmContractPaymentDto();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var response = await ContractPaymentService.GetPaymentByIdAsync(ReceiptId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            ContractPayment = response.Data;
+            StateHasChanged(); // Ensure the UI updates with the fetched data
+        }
+        else
+        {
+            // Handle error, e.g., show a message or redirect
+            Console.Error.WriteLine($"Error fetching payment: {response.ErrorMessage}");
+            await NotificationService.ShowError("Failed to load payment details. Please try again later.");
+        }
+    }
+}

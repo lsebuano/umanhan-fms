@@ -1,0 +1,56 @@
+﻿
+<link href="~/css/invoice.css" rel="stylesheet" />
+
+<header>
+    <div>
+        <h2>@ContractPayment.FarmName</h2>
+        <div class="small">@ContractPayment.FarmFullAddress</div>
+        <div class="small">Tel: @ContractPayment.FarmTelephone | Email: @ContractPayment.FarmEmail</div>
+        <div class="small">TIN: @ContractPayment.FarmTin</div>
+    </div>
+    <div class="umh-text-align-right">
+        <strong>Payment Receipt</strong>
+        <div class="small">Receipt No.: @ContractPayment.ReceiptNo</div>
+        <div class="small">Date: @ContractPayment.Date</div>
+    </div>
+</header>
+
+<section class="payer">
+    <strong>Payer / Buyer</strong><br />
+    @ContractPayment.BuyerName<br />
+    TIN: @ContractPayment.BuyerTin<br />
+    Contact: @ContractPayment.BuyerContactNo
+</section>
+
+<section class="summary">
+    <table>
+        <thead>
+            <tr><th>Item / Description</th><th class="center">Qty</th><th class="center">Unit</th><th class="center">Unit Price</th><th class="center">Line Total</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var item in ContractPayment.Items)
+            {
+                <tr><td>@item.Item</td><td class="right">@item.Quantity.ToString("n1")</td><td class="center">@item.Unit</td><td class="right">@item.UnitPrice.ToString("n2")</td><td class="right">@item.Total.ToString("n2")</td></tr>
+            }
+            <tr><td colspan="4" class="right"><strong>Subtotal</strong></td><td class="right"><strong>@ContractPayment.Subtotal.ToString("n2")</strong></td></tr>
+            <tr><td colspan="4" class="right">Discount</td><td class="right">@ContractPayment.TotalAdjustments.ToString("n2")</td></tr>
+            <tr><td colspan="4" class="right"><strong>Total Amount Received</strong></td><td class="right"><strong>@ContractPayment.TotalAmount.ToString("n2")</strong></td></tr>
+        </tbody>
+    </table>
+</section>
+
+<section>
+    <strong>Payment details</strong><br />
+    Method: @ContractPayment.PaymentMethod — Ref: @ContractPayment.PaymentRef<br />
+    Amount (in words): @ContractPayment.AmountInWords
+</section>
+
+<section class="footer small">
+    Received by: @ContractPayment.ReceivedBy<br />
+    Printed by: @ContractPayment.PrintedBy — @ContractPayment.PrintTimestamp<br />
+    Note: This receipt is for record and audit purposes. Buyer may issue BIR Form 2304 as substitute official receipt where applicable.
+</section>
+
+@code {
+    [Parameter] public FarmContractPaymentDto ContractPayment { get; set; } = new();
+}

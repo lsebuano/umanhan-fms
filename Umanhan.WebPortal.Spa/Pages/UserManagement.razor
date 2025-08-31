@@ -1,0 +1,824 @@
+﻿@page "/users"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject UserService UserService
+@inject RoleService RoleService
+@inject RolePermissionService RolePermissionService
+@inject PermService PermService
+@inject ModuleService ModuleService
+@inject IJSRuntime JSRuntime
+@inject IValidator<RoleDto> Validator
+@inject IValidator<RolePermissionDto> ValidatorPermission
+@inject UserStateService UserState
+
+<PermissionView Permission="User.Full">
+    <ChildContent>
+        <PageTitle>User Management</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/users" Text="User Management" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">User Management</RadzenText>
+
+        @if (objList == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <RadzenTabs RenderMode="TabRenderMode.Client" @bind-SelectedIndex=@selectedIndex>
+                <Tabs>
+                    <RadzenTabsItem Text="Users">
+                        <RadzenRow>
+                            <RadzenColumn Size="12" SizeMD="7">
+                                <div class="full-height-container">
+                                    <RadzenDataGrid @ref="usersGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                                    AllowSorting="true" PagerHorizontalAlign="HorizontalAlign.Left" Data="@objList" GridLines="DataGridGridLines.Vertical"
+                                                    ColumnWidth="100%" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                                    @bind-Value=@selectedObjList IsLoading=@isLoading Page="@ShowLoading" class="umh-height-70vh">
+                                        <EmptyTemplate>
+                                            <p class="umh-no-records">No records to display.</p>
+                                        </EmptyTemplate>
+                                        <HeaderTemplate>
+                                            <RadzenButton Text="New" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@(() => OpenDialog(string.Empty))></RadzenButton>
+                                        </HeaderTemplate>
+                                        <Columns>
+                                            <RadzenDataGridColumn Context="obj" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" Width="180px">
+                                                <Template Context="obj">
+                                                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                                  Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => OpenDialog(obj.Email))"
+                                                                  @onclick:stopPropagation="true" title="Edit" />
+
+                                                    <RadzenButton Icon="block" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                                  Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DisableUser(obj))"
+                                                                  @onclick:stopPropagation="true" title="Disable" />
+
+                                                    <RadzenButton Icon="logout" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                                  Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => LogoutUser(obj))"
+                                                                  @onclick:stopPropagation="true" title="Force Logout" />
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn Title="Email" Frozen="false" Width="300px">
+                                                <Template Context="data">
+                                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                                        <RadzenLabel>@data.Email </RadzenLabel>
+                                                        @if (data.EmailVerified == "true")
+                                                        {
+                                                            <RadzenIcon Icon="verified" IconColor="@Colors.Primary" title="Verified" />
+                                                        }
+                                                    </RadzenStack>
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn Title="Name" Frozen="false" Width="400px">
+                                                <Template Context="data">
+                                                    <RadzenLabel>@data.LastName, @data.FirstName</RadzenLabel>
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                            @* <RadzenDataGridColumn Property="@nameof(UserDto.PhoneNumber)" Title="Phone Number" Frozen="false" Width="250px" /> *@
+                                            <RadzenDataGridColumn Property="@nameof(UserDto.IsActive)" Title="Is Active" Frozen="false" Width="150px" />
+                                            <RadzenDataGridColumn Title="Status" Frozen="false" Width="250px">
+                                                <Template Context="data">
+                                                    <RadzenBadge Shade="Shade.Dark" BadgeStyle="BadgeStyle.Secondary" Text="@data.Status" />
+                                                </Template>
+                                            </RadzenDataGridColumn>
+                                        </Columns>
+                                    </RadzenDataGrid>
+                                </div>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="5">
+                                <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                                    <RadzenStack Gap="1rem">
+                                        <RadzenCard Variant="Variant.Text" class="rz-background-color-primary-lighter rz-color-on-primary-lighter">
+                                            User: <b>@selectedObjList.FirstOrDefault()?.Email</b>
+                                        </RadzenCard>
+                                        <RadzenTabs>
+                                            <Tabs>
+                                                <RadzenTabsItem Text="Assigned Roles">
+                                                    <RadzenDataGrid @ref="assignedRolesGrid" AllowFiltering="true" AllowPaging="true" ShowPagingSummary="true"
+                                                                    Data="@(selectedObjList.FirstOrDefault()?.Roles)">
+                                                        <HeaderTemplate>
+                                                            <RadzenButton Text="Add to Roles" Icon="group_add" ButtonStyle="ButtonStyle.Light" Click=@(() => OpenAddUserToRoleDialog(selectedObjList.FirstOrDefault()?.Username, selectedObjList.FirstOrDefault()?.Roles))></RadzenButton>
+                                                        </HeaderTemplate>
+                                                        <Columns>
+                                                            <RadzenDataGridColumn Context="obj" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" Width="160px">
+                                                                <Template Context="obj">
+                                                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                                                  Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => RemoveUserFromGroup(selectedObjList.FirstOrDefault()?.Username, obj.GroupName))"
+                                                                                  @onclick:stopPropagation="true" title="Remove User from Group" />
+                                                                    <RadzenButton Icon="key" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                                                  Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => ViewPermissions(obj.RoleId, obj.GroupName))"
+                                                                                  @onclick:stopPropagation="true" title="Permissions" />
+                                                                </Template>
+                                                            </RadzenDataGridColumn>
+                                                            <RadzenDataGridColumn Property="@nameof(RoleDto.GroupName)" Title="Role" />
+                                                        </Columns>
+                                                    </RadzenDataGrid>
+                                                </RadzenTabsItem>
+                                                @* <RadzenTabsItem Text="Inventories">
+                                            <RadzenDataGrid @ref="inventoriesGrid" AllowFiltering="true" AllowPaging="true" ShowPagingSummary="true"
+                                                            Data="@(selectedObjList.FirstOrDefault()?.Inventories)">
+                                                <Columns>
+                                                    <RadzenDataGridColumn Property="@nameof(InventoryDto.ItemName)" Title="Item" />
+                                                    <RadzenDataGridColumn Property="@nameof(InventoryDto.Unit)" Title="Unit" />
+                                                </Columns>
+                                            </RadzenDataGrid>
+                                        </RadzenTabsItem> *@
+                                            </Tabs>
+                                        </RadzenTabs>
+                                    </RadzenStack>
+                                </RadzenCard>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenTabsItem>
+
+                    <RadzenTabsItem Text="Roles">
+                        <RadzenRow>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenDataGrid @ref="rolesGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowPaging="true" PageSize="5" AllowSorting="true" EditMode="@roleEditMode"
+                                                Data="@roleList" GridLines="DataGridGridLines.Vertical" TItem="RoleDto" RowUpdate="@OnRoleUpdateRow" RowCreate="@OnRoleCreateRow" Sort="@ResetRole" Page="@ResetRole"
+                                                Filter="@ResetRole" SelectionMode="DataGridSelectionMode.Single" ColumnWidth="140px" @bind-Value=@selectedRoleList>
+                                    <HeaderTemplate>
+                                        @if (UserState.IsSuperAdmin)
+                                        {
+                                            <RadzenButton ButtonStyle="ButtonStyle.Success" Icon="add" Text="Add" Click="@InsertRoleRow" />
+                                        }
+                                    </HeaderTemplate>
+                                    <Columns>
+                                        @if (UserState.IsSuperAdmin)
+                                        {
+                                            <RadzenDataGridColumn Context="role" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" FrozenPosition="FrozenColumnPosition.Left">
+                                                <Template Context="role">
+                                                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRoleRow(role))" @onclick:stopPropagation="true" />
+                                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRoleRow(role))" @onclick:stopPropagation="true" />
+                                                </Template>
+                                                <EditTemplate Context="role">
+                                                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRoleRow(role))" aria-label="Save" />
+                                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelRoleEdit(role))" aria-label="Cancel" />
+                                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRoleRow(role))" aria-label="Delete" />
+                                                </EditTemplate>
+                                            </RadzenDataGridColumn>
+                                        }
+                                        <RadzenDataGridColumn Property="GroupName" Title="Role" Width="380px">
+                                            <EditTemplate Context="role">
+                                                <RadzenTemplateForm Data="@role" EditContext="@GetEditContext(role)">
+                                                    <RadzenTextBox @bind-Value="role.GroupName" class="umh-width-100 rz-display-block" Name="GroupName" aria-label="Role Name" />
+                                                    <ValidationMessage For="@(() => role.GroupName)" />
+                                                </RadzenTemplateForm>
+                                            </EditTemplate>
+                                        </RadzenDataGridColumn>
+
+                                        <RadzenDataGridColumn Property="IsActive" Title="Is Active" Width="180px">
+                                            <EditTemplate Context="role">
+                                                <RadzenCheckBox @bind-Value="role.IsActive" Name="IsActive" />
+                                            </EditTemplate>
+                                        </RadzenDataGridColumn>
+                                    </Columns>
+                                </RadzenDataGrid>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                                    <RadzenStack Gap="1rem">
+                                        <RadzenCard Variant="Variant.Text" class="rz-background-color-primary-lighter rz-color-on-primary-lighter">
+                                            Role: <b>@selectedRoleList.FirstOrDefault()?.GroupName</b>
+                                        </RadzenCard>
+                                        <RadzenTabs>
+                                            <Tabs>
+                                                <RadzenTabsItem Text="Permissions">
+                                                    <RadzenDataGrid @ref="rolePermissionsGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowSorting="true"
+                                                                    EditMode="@permissionEditMode" Data="@(selectedRoleList.FirstOrDefault()?.RolePermissions)" TItem="RolePermissionDto"
+                                                                    RowUpdate="@OnPermissionUpdateRow" RowCreate="@OnPermissionCreateRow" Sort="@ResetPermission" Page="@ResetPermission"
+                                                                    Filter="@ResetPermission" ColumnWidth="140px">
+                                                        <HeaderTemplate>
+                                                            <RadzenButton Text="Add Permission" Icon="add" ButtonStyle="ButtonStyle.Light" Click="@InsertPermissionRow"></RadzenButton>
+                                                        </HeaderTemplate>
+                                                        <Columns>
+                                                            <RadzenDataGridColumn Context="permission" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" Width="160px">
+                                                                <Template Context="permission">
+                                                                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditPermissionRow(permission))" @onclick:stopPropagation="true" />
+                                                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeletePermissionRow(permission))" @onclick:stopPropagation="true" />
+                                                                </Template>
+                                                                <EditTemplate Context="permission">
+                                                                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SavePermissionRow(permission))" aria-label="Save" />
+                                                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelPermissionEdit(permission))" aria-label="Cancel" />
+                                                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeletePermissionRow(permission))" aria-label="Delete" />
+                                                                </EditTemplate>
+                                                            </RadzenDataGridColumn>
+
+                                                            <RadzenDataGridColumn Property="ModuleName" Title="Module" Width="200px">
+                                                                <EditTemplate Context="module">
+                                                                    <RadzenTemplateForm Data="@module" EditContext="@GetEditContextPermission(module)">
+                                                                        <RadzenDropDown @bind-Value="module.ModuleId" Data="@modules" TextProperty="@nameof(ModuleDto.Name)" ValueProperty="@nameof(ModuleDto.ModuleId)" class="umh-width-100 rz-display-block"
+                                                                                        InputAttributes="@(new Dictionary<string, object>() { { "aria-label", "Select module" } })" />
+                                                                        <ValidationMessage For="@(() => module.ModuleId)" />
+                                                                    </RadzenTemplateForm>
+                                                                </EditTemplate>
+                                                            </RadzenDataGridColumn>
+
+                                                            <RadzenDataGridColumn Property="PermissionName" Title="Permission" Width="150px">
+                                                                <EditTemplate Context="perm">
+                                                                    <RadzenTemplateForm Data="@perm" EditContext="@GetEditContextPermission(perm)">
+                                                                        <RadzenDropDown @bind-Value="perm.PermissionId" Data="@perms" TextProperty="@nameof(PermissionDto.Name)" ValueProperty="@nameof(PermissionDto.PermissionId)" class="umh-width-100 rz-display-block"
+                                                                                        InputAttributes="@(new Dictionary<string, object>() { { "aria-label", "Select permission" } })" />
+                                                                        <ValidationMessage For="@(() => perm.PermissionId)" />
+                                                                    </RadzenTemplateForm>
+                                                                </EditTemplate>
+                                                            </RadzenDataGridColumn>
+                                                        </Columns>
+                                                    </RadzenDataGrid>
+                                                </RadzenTabsItem>
+                                            </Tabs>
+                                        </RadzenTabs>
+                                    </RadzenStack>
+                                </RadzenCard>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenTabsItem>
+                </Tabs>
+            </RadzenTabs>
+        }
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    RadzenDataGrid<UserDto> usersGrid;
+    RadzenDataGrid<RoleDto> assignedRolesGrid;
+    private IEnumerable<UserDto>? objList = [];
+    private IList<UserDto> selectedObjList = [];
+    private bool isLoading;
+    private int selectedIndex = 0;
+
+    RadzenDataGrid<RoleDto> rolesGrid;
+    private IEnumerable<RoleDto>? roleList = [];
+    private IList<RoleDto> selectedRoleList = [];
+    private DataGridEditMode roleEditMode = DataGridEditMode.Single;
+    private List<RoleDto> rolesToInsert = new List<RoleDto>();
+    private List<RoleDto> rolesToUpdate = new List<RoleDto>();
+
+    private IEnumerable<ModuleDto> modules;
+    private IEnumerable<PermissionDto> perms;
+    RadzenDataGrid<RolePermissionDto> rolePermissionsGrid;
+    private IEnumerable<RolePermissionDto>? permissionsList = [];
+    private IList<RolePermissionDto> selectedPermissionList = [];
+    private DataGridEditMode permissionEditMode = DataGridEditMode.Single;
+    private List<RolePermissionDto> permissionsToInsert = new List<RolePermissionDto>();
+    private List<RolePermissionDto> permissionsToUpdate = new List<RolePermissionDto>();
+
+    Dictionary<RoleDto, EditContext> editContexts = new();
+    Dictionary<RolePermissionDto, EditContext> editContextsPermission = new();
+    Dictionary<EditContext, ValidationMessageStore> stores = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ShowLoading().ConfigureAwait(false);
+        await LoadList().ConfigureAwait(false);
+        await LoadRoles().ConfigureAwait(false);
+        await LoadModules().ConfigureAwait(false);
+        await LoadPerms().ConfigureAwait(false);
+    }
+
+    private async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    // USERS
+    private async Task LoadList(string email = null)
+    {
+        var response = await UserService.GetAllUsersAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            objList = response.Data;
+
+            var userObj = new UserDto();
+            if (!string.IsNullOrEmpty(email))
+            {
+                userObj = objList.FirstOrDefault();
+                selectedObjList = new List<UserDto>() { userObj };
+            }
+            else
+            {
+                userObj = objList.FirstOrDefault(x => x.Email == email);
+                selectedObjList = new List<UserDto>() { userObj };
+            }
+
+            StateHasChanged();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task OpenDialog(string email)
+    {
+        var result = await DialogService.OpenAsync<UserDialog>("User Details",
+                    new Dictionary<string, object> { { "ObjId", email } },
+                    new DialogOptions()
+                    {
+                        Width = "50vw",
+                        Height = "80vh",
+                    });
+        // refresh grid if the dialog returns true
+        if (result != null)
+        {
+            await GridReload();
+        }
+    }
+
+    private async Task OpenAddUserToRoleDialog(string username, IEnumerable<RoleDto> roles)
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", "selectedUsername", username);
+        await JSRuntime.InvokeVoidAsync("console.log", "selectedUserRoles", roles);
+
+        if (string.IsNullOrEmpty(username))
+        {
+            await DialogService.Alert("Please select a user first.", "No User Selected", new AlertOptions() { OkButtonText = "OK" });
+        }
+        else
+        {
+            var result = await DialogService.OpenAsync<AddUserToRoleDialog>("Add User to Roles",
+                        new Dictionary<string, object> {
+                            { "ObjId", username },
+                            { "CurrentRoles", roles.Select(x => x.GroupName) }
+                                                                    },
+                        new DialogOptions()
+                        {
+                            Width = "50vw",
+                            Height = "80vh",
+                        });
+            // refresh grid if the dialog returns true
+            if (result != null)
+            {
+                await GridReload();
+            }
+        }
+    }
+
+    private async Task GridReload()
+    {
+        await LoadList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task DisableUser(UserDto obj)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to disable user '{obj.Email}'?",
+                "Confirm Disable",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await UserService.DisableCognitoUserAsync(obj.Username).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess($"User '{obj.Email}' successfuly disabled.", "Success");
+                await GridReload();
+            }
+            else
+            {
+                await NotificationService.ShowError($"Failed to disable user '{obj.Email}'.", "Error");
+            }
+        }
+    }
+
+    private async Task LogoutUser(UserDto obj)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to logout user '{obj.Email}'?",
+                "Confirm User Logout",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await UserService.LogoutCognitoUserAsync(obj.Username).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess($"User '{obj.Email}' successfuly logged out of the system.", "Success");
+                await GridReload();
+            }
+            else
+            {
+                await NotificationService.ShowError($"Failed to logout user '{obj.Email}' of the system.", "Error");
+            }
+        }
+    }
+
+    private async Task RemoveUserFromGroup(string username, string groupName)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove this user from '{groupName}'?",
+                "Confirm User Logout",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await UserService.RemoveCognitoUserFromGroupAsync(username, groupName).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess($"User removed from group '{groupName}'.", "Success");
+                await GridReload();
+            }
+            else
+            {
+                await NotificationService.ShowError($"Failed to remove user from group '{groupName}'.", "Error");
+            }
+        }
+    }
+
+    private async Task ViewPermissions(Guid roleId, string role)
+    {
+        var result = await DialogService.OpenAsync<RolePermissionsDialog>($"{role} Role Permissions",
+                        new Dictionary<string, object> {
+                            { "ObjId", roleId }
+                                                },
+                        new DialogOptions()
+                        {
+                            Width = "50vw",
+                            Height = "80vh",
+                        });
+        // refresh grid if the dialog returns true
+        if (result != null)
+        {
+            await GridReload();
+        }
+    }
+
+    // ROLES
+    private async Task LoadRoles(Guid? roleId = null)
+    {
+        var response = await RoleService.GetRolesExceptAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            roleList = response.Data;
+
+            var roleObj = new RoleDto();
+            if (roleId == null)
+            {
+                roleObj = roleList.FirstOrDefault();
+                selectedRoleList = new List<RoleDto>() { roleObj };
+            }
+            else
+            {
+                roleObj = roleList.FirstOrDefault(x => x.RoleId == roleId);
+                selectedRoleList = new List<RoleDto>() { roleObj };
+            }
+            StateHasChanged();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void ResetRole()
+    {
+        rolesToInsert.Clear();
+        rolesToUpdate.Clear();
+    }
+
+    void ResetRole(RoleDto role)
+    {
+        rolesToInsert.Remove(role);
+        rolesToUpdate.Remove(role);
+    }
+
+    async Task EditRoleRow(RoleDto role)
+    {
+        if (!rolesGrid.IsValid) return;
+
+        if (roleEditMode == DataGridEditMode.Single)
+        {
+            ResetRole();
+        }
+
+        rolesToUpdate.Add(role);
+        await rolesGrid.EditRow(role);
+    }
+
+    async Task OnRoleUpdateRow(RoleDto role)
+    {
+        if (!ValidateRow(role))
+            return;
+
+        ResetRole(role);
+
+        var response = await RoleService.UpdateRoleAsync(role).ConfigureAwait(false);
+        if (response is not null)
+        {
+            await NotificationService.ShowSuccess("Role updated successfully.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Oops! Something went wrong.");
+        }
+    }
+
+    async Task SaveRoleRow(RoleDto role)
+    {
+        if (!ValidateRow(role))
+            return;
+
+        await rolesGrid.UpdateRow(role);
+        await LoadRoles().ConfigureAwait(false);
+    }
+
+    void CancelRoleEdit(RoleDto role)
+    {
+        ResetRole(role);
+
+        rolesGrid.CancelEditRow(role);
+
+        // var roleEntry = dbContext.Entry(role);
+        // if (roleEntry.State == EntityState.Modified)
+        // {
+        //     roleEntry.CurrentValues.SetValues(roleEntry.OriginalValues);
+        //     roleEntry.State = EntityState.Unchanged;
+        // }
+    }
+
+    async Task DeleteRoleRow(RoleDto role)
+    {
+        ResetRole(role);
+
+        if (roleList.Contains(role))
+        {
+            var response = await RoleService.DeleteRoleAsync(role.RoleId).ConfigureAwait(false);
+            if (response is not null)
+            {
+                await rolesGrid.Reload();
+                await LoadRoles().ConfigureAwait(false);
+                await NotificationService.ShowSuccess("Role deleted successfully.");
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+        else
+        {
+            rolesGrid.CancelEditRow(role);
+            await rolesGrid.Reload();
+        }
+    }
+
+    async Task InsertRoleRow()
+    {
+        if (!rolesGrid.IsValid) return;
+
+        if (roleEditMode == DataGridEditMode.Single)
+        {
+            ResetRole();
+        }
+
+        var role = new RoleDto();
+        rolesToInsert.Add(role);
+        await rolesGrid.InsertRow(role);
+    }
+
+    async Task InsertAfterRow(RoleDto row)
+    {
+        if (!rolesGrid.IsValid) return;
+
+        if (roleEditMode == DataGridEditMode.Single)
+        {
+            ResetRole();
+        }
+
+        var role = new RoleDto();
+        rolesToInsert.Add(role);
+        await rolesGrid.InsertAfterRow(role, row);
+    }
+
+    async Task OnRoleCreateRow(RoleDto role)
+    {
+        if (!ValidateRow(role))
+            return;
+
+        var result = await RoleService.CreateRoleAsync(role).ConfigureAwait(false);
+        if (result is not null)
+        {
+            rolesToInsert.Remove(role);
+            await NotificationService.ShowSuccess("Role created successfully.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Unable to create new role.");
+        }
+    }
+
+
+    // PERMISSIONS
+    async Task LoadModules()
+    {
+        var response = await ModuleService.GetAllModulesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            modules = response.Data?.OrderBy(x => x.Name).AsEnumerable() ?? [];
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadPerms()
+    {
+        var response = await PermService.GetAllPermissionsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            perms = response.Data?.OrderBy(x => x.Name).AsEnumerable() ?? [];
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void ResetPermission()
+    {
+        permissionsToInsert.Clear();
+        permissionsToUpdate.Clear();
+    }
+
+    void ResetPermission(RolePermissionDto permission)
+    {
+        permissionsToInsert.Remove(permission);
+        permissionsToUpdate.Remove(permission);
+    }
+
+    async Task InsertPermissionRow()
+    {
+        if (!rolePermissionsGrid.IsValid) return;
+
+        if (permissionEditMode == DataGridEditMode.Single)
+        {
+            ResetPermission();
+        }
+
+        var permission = new RolePermissionDto();
+        permission.RoleId = selectedRoleList.FirstOrDefault()?.RoleId ?? Guid.Empty;
+        permissionsToInsert.Add(permission);
+        await rolePermissionsGrid.InsertRow(permission);
+    }
+
+    async Task EditPermissionRow(RolePermissionDto permission)
+    {
+        if (!rolePermissionsGrid.IsValid) return;
+
+        if (permissionEditMode == DataGridEditMode.Single)
+        {
+            ResetPermission();
+        }
+
+        permission.RoleId = selectedRoleList.FirstOrDefault()?.RoleId ?? Guid.Empty;
+        permissionsToUpdate.Add(permission);
+        await rolePermissionsGrid.EditRow(permission);
+    }
+
+    async Task DeletePermissionRow(RolePermissionDto permission)
+    {
+        ResetPermission(permission);
+
+        if (rolePermissionsGrid.Data.Contains(permission))
+        {
+            var response = await RolePermissionService.DeleteRolePermissionAsync(permission.RolePermissionId).ConfigureAwait(false);
+            if (response is not null)
+            {
+                await rolePermissionsGrid.Reload();
+                await LoadRoles().ConfigureAwait(false);
+                await NotificationService.ShowSuccess("Permission deleted successfully.");
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+        else
+        {
+            rolePermissionsGrid.CancelEditRow(permission);
+            await rolePermissionsGrid.Reload();
+        }
+    }
+
+    async Task SavePermissionRow(RolePermissionDto permission)
+    {
+        if (!ValidateRowPermission(permission))
+            return;
+
+        await rolePermissionsGrid.UpdateRow(permission);
+        await LoadRoles().ConfigureAwait(false);
+    }
+
+    void CancelPermissionEdit(RolePermissionDto permission)
+    {
+        ResetPermission(permission);
+        rolePermissionsGrid.CancelEditRow(permission);
+    }
+
+    async Task OnPermissionCreateRow(RolePermissionDto permission)
+    {
+        if (!ValidateRowPermission(permission))
+            return;
+
+        var result = await RolePermissionService.CreateRolePermissionAsync(permission).ConfigureAwait(false);
+        if (result is not null)
+        {
+            permissionsToInsert.Remove(permission);
+            await NotificationService.ShowSuccess("Permission created successfully.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Unable to create new permission.");
+        }
+    }
+
+    async Task OnPermissionUpdateRow(RolePermissionDto permission)
+    {
+        if (!ValidateRowPermission(permission))
+            return;
+
+        ResetPermission(permission);
+
+        var response = await RolePermissionService.UpdateRolePermissionAsync(permission).ConfigureAwait(false);
+        if (response is not null)
+        {
+            await NotificationService.ShowSuccess("Permission updated successfully.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Oops! Something went wrong.");
+        }
+    }
+
+    private EditContext GetEditContext(RoleDto role)
+    {
+        if (!editContexts.TryGetValue(role, out var context))
+        {
+            context = new EditContext(role);
+            editContexts[role] = context;
+        }
+        return context;
+    }
+
+    private EditContext GetEditContextPermission(RolePermissionDto permission)
+    {
+        if (!editContextsPermission.TryGetValue(permission, out var context))
+        {
+            context = new EditContext(permission);
+            editContextsPermission[permission] = context;
+        }
+        return context;
+    }
+
+    bool ValidateRowPermission(RolePermissionDto permission)
+    {
+        var editContext = GetEditContextPermission(permission);
+
+        if (!stores.TryGetValue(editContext, out var store))
+        {
+            store = new ValidationMessageStore(editContext);
+            stores[editContext] = store;
+        }
+        store.Clear();
+
+        var result = ValidatorPermission.Validate(permission);
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                store.Add(editContext.Field(error.PropertyName), error.ErrorMessage);
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ValidateRow(RoleDto role)
+    {
+        var editContext = GetEditContext(role);
+
+        if (!stores.TryGetValue(editContext, out var store))
+        {
+            store = new ValidationMessageStore(editContext);
+            stores[editContext] = store;
+        }
+        store.Clear();
+
+        var result = Validator.Validate(role);
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                store.Add(editContext.Field(error.PropertyName), error.ErrorMessage);
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return false;
+        }
+
+        return true;
+    }
+}
+
+

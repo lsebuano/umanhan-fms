@@ -1,0 +1,144 @@
+﻿@page "/crops"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject CropService CropService
+
+<PermissionView Permission="Masterdata.Full">
+    <ChildContent>
+        <PageTitle>Crops</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/crops" Text="Crops" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Crops</RadzenText>
+
+        @if (objList == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <RadzenRow>
+                <RadzenColumn Size="12" SizeMD="12">
+                    <div class="full-height-container">
+                        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                        AllowSorting="true" PagerHorizontalAlign="HorizontalAlign.Left" Data="@objList" GridLines="DataGridGridLines.Vertical"
+                                        ColumnWidth="100%" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                        @bind-Value=@selectedObjList IsLoading=@isLoading Page="@ShowLoading" class="umh-height-70vh">
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                <RadzenButton Text="New" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@(() => OpenDialog(Guid.Empty))></RadzenButton>
+                            </HeaderTemplate>
+                            <Columns>
+                                <RadzenDataGridColumn Context="obj" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" Width="120px">
+                                    <Template Context="obj">
+                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                      Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => OpenDialog(obj.CropId))"
+                                                      @onclick:stopPropagation="true" title="Edit" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                      Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => Delete(obj))"
+                                                      @onclick:stopPropagation="true" title="Delete" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Property="@nameof(CropDto.CropName)" Title="Crop" Frozen="false" />
+                                <RadzenDataGridColumn Property="@nameof(CropDto.CropVariety)" Title="Variety" Frozen="false" />
+                                <RadzenDataGridColumn Property="@nameof(CropDto.DefaultUnit)" Title="Unit" Frozen="false" />
+                                <RadzenDataGridColumn Property="@nameof(CropDto.Notes)" Title="Notes" Frozen="false" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </RadzenColumn>
+                @*  <RadzenColumn Size="12" SizeMD="8">
+
+        </RadzenColumn> *@
+            </RadzenRow>
+        }
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    private IEnumerable<CropDto>? objList;
+    private IList<CropDto> selectedObjList;
+    private bool isLoading;
+    private Guid id;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync().ConfigureAwait(false);
+        await ShowLoading().ConfigureAwait(false);
+        await LoadList().ConfigureAwait(false);
+    }
+
+    private async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    private async Task LoadList()
+    {
+        var response = await CropService.GetAllCropsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            objList = response.Data;
+            selectedObjList = new List<CropDto>() { objList.FirstOrDefault() };
+        }
+        else
+        {
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+    }
+
+    private async Task OpenDialog(Guid id)
+    {
+        var result = await DialogService.OpenAsync<CropDialog>("Crop",
+                    new Dictionary<string, object> { { "ObjId", id } },
+                    new DialogOptions()
+                        {
+                            Width = "50vw",
+                            Height = "80vh",
+                        });
+        // refresh grid if the dialog returns true
+        if (result is bool boolResult && boolResult)
+        {
+            await GridReload();
+        }
+    }
+
+    private async Task GridReload()
+    {
+        await LoadList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Delete(CropDto obj)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove '{obj.CropName}'?",
+                "Confirm Remove",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await CropService.DeleteCropAsync(obj.CropId).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess("Delete Successful");
+                // refresh grid
+                await LoadList();
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+    }
+}

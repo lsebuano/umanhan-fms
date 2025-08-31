@@ -1,0 +1,6 @@
+@Umanhan.UserManager.Api_HostAddress = http://localhost:5293
+
+GET {{Umanhan.UserManager.Api_HostAddress}}/
+Accept: application/json
+
+###

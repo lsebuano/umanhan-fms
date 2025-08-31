@@ -1,0 +1,185 @@
+﻿@inject DialogService DialogService
+@inject StaffService StaffService
+@inject AppNotificationService NotificationService
+@inject IValidator<StaffDto> Validator
+@inject FarmService FarmService
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenStack>
+        <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+            <RadzenTemplateForm TItem="StaffDto" Data="@obj" Submit="@SaveChanges">
+                <RadzenStack>
+                    <FluentValidationValidator Validator="@Validator" />
+
+                    <RadzenFormField Text="Name" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.Name" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Name)" />
+
+                    <RadzenFormField Text="Farm" Variant="Variant.Text">
+                        <RadzenDropDown @ref=@radzenDropDown @bind-SearchText=SearchText FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        FilterOperator="StringFilterOperator.StartsWith" AllowFiltering="true"
+                                        Data=@farms TextProperty="@nameof(FarmDto.FarmName)" ValueProperty="@nameof(FarmDto.FarmId)"
+                                        AllowClear="true" @bind-Value="obj.FarmId" Name="FarmId" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.FarmId)" />
+
+                    <RadzenFormField Text="Contact Info" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.ContactInfo" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.ContactInfo)" />
+
+                    <RadzenFormField Text="Hire Date" Variant="Variant.Text">
+                        <RadzenDatePicker @bind-Value="obj.HireDateUtc" Name="HireDateUtc" ShowCalendarWeek />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.HireDateUtc)" />
+
+                    <RadzenFormField Text="Status" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.Status" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Status)" />
+                </RadzenStack>
+                <RadzenFooter>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                        <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                        <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                    </RadzenStack>
+                </RadzenFooter>
+            </RadzenTemplateForm>
+        </RadzenColumn>
+    </RadzenStack>
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => DialogService.Close(true))" Variant="Variant.Flat" Text="Close" class="umh-width-120px" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+    private string mode = "Add";
+    private StaffDto obj;
+    private string title = "Message";
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    RadzenDropDown<Guid> radzenDropDown;
+    private string searchText;
+    private IEnumerable<FarmDto> farms;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (obj == null)
+        {
+            obj = new StaffDto();
+        }
+        // initialize the context
+        editContext = new EditContext(obj);
+        await LoadFarms().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        await LoadObj().ConfigureAwait(false);
+        // update the context
+        editContext = new EditContext(obj);
+    }
+
+    private async Task LoadObj()
+    {
+        if (!ObjId.Equals(Guid.Empty))
+        {
+            mode = "Edit";
+            var response = await StaffService.GetStaffByIdAsync(ObjId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            mode = "Add";
+            obj = new StaffDto();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            StaffDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await StaffService.CreateStaffAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await StaffService.UpdateStaffAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+
+    public string SearchText
+    {
+        get
+        {
+            return searchText;
+        }
+        set
+        {
+            if (searchText != value)
+            {
+                searchText = value;
+                // searchTextStatus = $"Search text: {searchText}";
+                //Console.WriteLine($"Search text: {radzenDropDown.SearchText}");
+            }
+        }
+    }
+
+    private async Task LoadFarms()
+    {
+        var response = await FarmService.GetAllFarmsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            farms = response.Data;
+    }
+}

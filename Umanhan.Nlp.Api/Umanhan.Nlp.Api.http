@@ -1,0 +1,6 @@
+@Umanhan.Nlp.Api_HostAddress = http://localhost:7194
+
+GET {{Umanhan.Nlp.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

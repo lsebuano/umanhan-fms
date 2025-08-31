@@ -1,0 +1,54 @@
+﻿
+<RadzenCard class="umh-padding-1rem">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <strong>@StatusLabel</strong>
+        <span>@Progress%</span>
+    </div>
+
+    <RadzenProgressBar Value="@Progress"
+                       ShowValue="true"
+                       Unit="@($"- {Status.ToString()}")"
+                       class="@($"{ProgressColor} umh-height-25px")" />
+</RadzenCard>
+
+@code {
+    [Parameter] public ContractStatus Status { get; set; }
+
+    private int Progress => Status switch
+    {
+        ContractStatus.NEW => 0,
+        ContractStatus.HARVEST_SCHEDULED => 20,
+        ContractStatus.HARVESTED => 45,
+        ContractStatus.PICKUP_SCHEDULED => 65,
+        ContractStatus.PICKED_UP => 85,
+        ContractStatus.PAID => 100,
+        ContractStatus.PARTIALLY_PAID => 95,
+        ContractStatus.CANCELLED => 100,
+        ContractStatus.PICKUP_CONFIRMED => 90,
+        ContractStatus.RECOVERED => 45,
+        _ => 0
+    };
+
+    private string ProgressColor => Status switch
+    {
+        ContractStatus.CANCELLED => "rz-background-color-secondary-dark",
+        ContractStatus.PARTIALLY_PAID => "rz-background-color-warning-dark",
+        ContractStatus.RECOVERED => "rz-background-color-info-dark",
+        _ => "rz-background-color-success-dark"
+    };
+
+    private string StatusLabel => Status switch
+    {
+        ContractStatus.NEW => "New",
+        ContractStatus.HARVEST_SCHEDULED => "Harvest Scheduled",
+        ContractStatus.HARVESTED => "Harvested",
+        ContractStatus.PICKUP_SCHEDULED => "Pickup Scheduled",
+        ContractStatus.PICKED_UP => "Picked Up",
+        ContractStatus.PAID => "Paid",
+        ContractStatus.PARTIALLY_PAID => "Partially Paid",
+        ContractStatus.CANCELLED => "Cancelled",
+        ContractStatus.PICKUP_CONFIRMED => "Pickup Confirmed",
+        ContractStatus.RECOVERED => "Recovered",
+        _ => "Unknown"
+    };
+}

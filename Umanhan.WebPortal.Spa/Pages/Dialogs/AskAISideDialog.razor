@@ -1,0 +1,72 @@
+﻿@inject ReportService ReportService
+@inject AppNotificationService NotificationService
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start">
+    <RadzenIcon Icon="assistant" class="umh-f-3rem-c-primary" />
+    <RadzenText TextStyle="TextStyle.H5" class="text-gradient">Ask some insights about your data</RadzenText>
+</RadzenStack>
+
+<RadzenRow class="rz-mt-10">
+    <RadzenTextArea Rows="3" @bind-Value="prompt" Placeholder="Prompt" class="umh-width-100" Disabled="@isGenerating" />
+    <RadzenButton Icon="auto_awesome" Text="Generate" Click="@(() => GenerateReport(prompt))" ButtonStyle="ButtonStyle.Info" class="umh-mt-10px" Disabled="@isGenerating" />
+</RadzenRow>
+<RadzenRow class="rz-mt-5">
+    <RadzenText Visible="@isGenerating" TextStyle="TextStyle.Caption">
+        Please wait...
+    </RadzenText>
+    @if (isDone && !isGenerating)
+    {
+        <div class="umh-note-box">
+            @apiTextHtml
+        </div>
+    }
+</RadzenRow>
+
+@code {
+    private string prompt;
+    private bool isGenerating = false;
+    private string insight;
+    private bool isDone = false;
+    private MarkupString apiTextHtml;
+
+    async Task GenerateReport(string prompt)
+    {
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            await NotificationService.ShowInfo("Please enter a prompt.");
+            return;
+        }
+
+        isGenerating = true;
+        apiTextHtml = new MarkupString(string.Empty); // Reset the HTML content
+
+        var result = await ReportService.GenerateNlpBasedReportAsync(prompt).ConfigureAwait(false);
+        //Console.WriteLine(result);
+        if (result != null && result.IsSuccess)
+        {
+            insight = result.Data;
+            isDone = true;
+            FormatText(result.Data);
+
+            //Console.WriteLine(insight);
+        }
+        else
+        {
+            Console.WriteLine($"GenerateReport:Error: {result?.ErrorMessage}");
+            await NotificationService.ShowInfo("Failed to generate insight.");
+        }
+
+        isGenerating = false;
+        StateHasChanged();
+    }
+
+    void FormatText(string result)
+    {
+        var encoded = System.Net.WebUtility.HtmlEncode(result);
+        var withBreaks = encoded.Replace("\\n", "<br/>").Replace("###", "");
+        var htmlized = Regex.Replace(withBreaks, @"\*\*(.+?)\*\*", "<b>$1</b>");
+        apiTextHtml = new MarkupString(htmlized);
+
+        //Console.WriteLine(apiTextHtml);
+    }
+}

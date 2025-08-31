@@ -1,0 +1,9 @@
+﻿<RadzenChart class="umh-height-300px">
+    <RadzenPieSeries Data="@Data" CategoryProperty="Label" ValueProperty="Cost" />
+</RadzenChart>
+
+@code {
+    public class PieItem { public string Label { get; set; } public decimal Cost { get; set; } }
+
+    [Parameter] public List<PieItem> Data { get; set; }
+}

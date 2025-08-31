@@ -1,0 +1,248 @@
+﻿@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+@inject FarmActivityUsageService FarmActivityUsageService
+@inject FarmInventoryService FarmInventoryService
+
+<RadzenDataGrid @ref="expense1Grid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true"
+                PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@farmUsageExpenses" ColumnWidth="160px" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                @bind-Value=@selectedExpenses class="rz-mt-5" EditMode="DataGridEditMode.Single" TItem="FarmActivityUsageDto" RowUpdate="@OnUpdateRowGrid1"
+                RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1" Filter="@ResetGrid1">
+    <HeaderTemplate>
+        <RadzenButton ButtonStyle="ButtonStyle.Base" Icon="add" Text="Add Expenses" Click="@InsertRowGrid1" />
+    </HeaderTemplate>
+    <Columns>
+        <RadzenDataGridColumn Context="expense" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right" Width="160px">
+            <Template Context="expense">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowGrid1(expense))" @onclick:stopPropagation="true" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(expense))" @onclick:stopPropagation="true" />
+            </Template>
+            <EditTemplate Context="expense">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowGrid1(expense))" aria-label="Save" />
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditGrid1(expense))" aria-label="Cancel" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(expense))" aria-label="Delete" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityUsageDto.ItemName)" Title="Item" Width="250px">
+            <EditTemplate Context="expense">
+                <RadzenDropDown @bind-Value="expense.InventoryId" Data="@inventories" Placeholder="Select item"
+                                TextProperty="InventoryItemName" ValueProperty="InventoryId" Name="InventoryId"
+                                class="umh-width-100 rz-display-block" Change="@(() => OnItemChange(expense))" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityUsageDto.Unit)" Title="Unit" Width="150px">
+            <Template Context="expense">
+                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@expense.Unit" />
+            </Template>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityUsageDto.UsageHours)" Title="Usage" TextAlign="TextAlign.Right" Width="150px">
+            <EditTemplate Context="expense">
+                <RadzenNumeric @bind-Value="expense.UsageHours" Min="0" Max="1000" class="umh-width-100 rz-display-block" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityUsageDto.Rate)" Title="Rate" TextAlign="TextAlign.Right" Width="150px">
+            <EditTemplate Context="expense">
+                <RadzenNumeric @bind-Value="expense.Rate" Min="0" Max="1000" class="umh-width-100 rz-display-block" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityUsageDto.TotalCost)" Title="Total Cost" TextAlign="TextAlign.Right" Width="200px">
+            <EditTemplate Context="expense">
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Icon="equal" Size="ButtonSize.Small" Click="@(() => { expense.Recompute(); StateHasChanged(); })" title="Compute" />
+                <RadzenBadge Shade="Shade.Lighter" BadgeStyle="BadgeStyle.Primary" Text="@expense.TotalCost.ToString("n2")" class="umh-p-10px-ml-10px" />
+            </EditTemplate>
+            <FooterTemplate>
+                Total Cost: <b>@String.Format(new System.Globalization.CultureInfo("en-US"), "{0:n2}", farmUsageExpenses.Sum(o => o.TotalCost))</b>
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    [Parameter]
+    public FarmActivityDto Model { get; set; }
+
+    private IList<FarmActivityUsageDto> selectedExpenses = [];
+    private IEnumerable<FarmActivityUsageDto> farmUsageExpenses = [];
+    private IEnumerable<FarmInventoryDto> inventories = [];
+
+    private Guid selectedItemUnitId;
+
+    RadzenDataGrid<FarmActivityUsageDto> expense1Grid;
+
+    List<FarmActivityUsageDto> expense1ToInsert = [];
+    List<FarmActivityUsageDto> expense1ToUpdate = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFarmUsageExpenses().ConfigureAwait(false);
+        await LoadFarmInventories().ConfigureAwait(false);
+    }
+
+    async Task LoadFarmInventories()
+    {
+        var response = await FarmInventoryService.GetFarmInventoriesAsync(Model.FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+            inventories = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadFarmUsageExpenses()
+    {
+        var response = await FarmActivityUsageService.GetFarmActivityUsageByActivityAsync(Model.ActivityId).ConfigureAwait(false);
+        if (response.IsSuccess)
+            farmUsageExpenses = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void ResetGrid1()
+    {
+        expense1ToInsert.Clear();
+        expense1ToUpdate.Clear();
+    }
+
+    void ResetGrid1(FarmActivityUsageDto expense1)
+    {
+        expense1ToInsert.Remove(expense1);
+        expense1ToUpdate.Remove(expense1);
+    }
+
+    async Task EditRowGrid1(FarmActivityUsageDto expense1)
+    {
+        if (!expense1Grid.IsValid) return;
+
+        expense1ToUpdate.Add(expense1);
+        await expense1Grid.EditRow(expense1);
+    }
+
+    async Task OnUpdateRowGrid1(FarmActivityUsageDto expense1)
+    {
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        ResetGrid1(expense1);
+
+        var obj = await FarmActivityUsageService.UpdateFarmActivityUsageAsync(expense1).ConfigureAwait(false);
+        if (obj is not null)
+        {
+            await expense1Grid.Reload();
+            await LoadFarmUsageExpenses().ConfigureAwait(false);
+            await NotificationService.ShowSuccess("Usage expense successfully updated.");
+        }
+        else
+            await NotificationService.ShowError("Unable to update usage expense.");
+
+        DialogService.Close(null);
+    }
+
+    async Task SaveRowGrid1(FarmActivityUsageDto expense1)
+    {
+        await expense1Grid.UpdateRow(expense1);
+    }
+
+    void CancelEditGrid1(FarmActivityUsageDto expense1)
+    {
+        ResetGrid1(expense1);
+
+        expense1Grid.CancelEditRow(expense1);
+    }
+
+    async Task DeleteRowGrid1(FarmActivityUsageDto expense1)
+    {
+        ResetGrid1(expense1);
+
+        if (farmUsageExpenses.Contains(expense1))
+        {
+            var confirm = await DialogService.Confirm(
+    $"Are you sure you want to delete usage expense?",
+    "Confirm Delete",
+    new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+        );
+
+            if (confirm == true)
+            {
+                var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+                var obj = await FarmActivityUsageService.DeleteFarmActivityUsageAsync(expense1.UsageId).ConfigureAwait(false);
+                if (obj is not null)
+                {
+                    await expense1Grid.Reload();
+                    await LoadFarmUsageExpenses().ConfigureAwait(false);
+                    await NotificationService.ShowSuccess("Usage expense successfully deleted.");
+                }
+                else
+                    await NotificationService.ShowError("Unable to delete usage expense.");
+
+                DialogService.Close(null);
+            }
+        }
+        else
+        {
+            expense1Grid.CancelEditRow(expense1);
+            await expense1Grid.Reload();
+        }
+    }
+
+    async Task InsertRowGrid1()
+    {
+        if (!expense1Grid.IsValid) return;
+
+        var expense1 = new FarmActivityUsageDto();
+        expense1.FarmId = Model.FarmId;
+        expense1.ActivityId = Model.ActivityId;
+        expense1ToInsert.Add(expense1);
+
+        await expense1Grid.InsertRow(expense1);
+    }
+
+    async Task InsertAfterRowGrid1(FarmActivityUsageDto row)
+    {
+        if (!expense1Grid.IsValid) return;
+
+        var expense1 = new FarmActivityUsageDto();
+        expense1.FarmId = Model.FarmId;
+        expense1.ActivityId = Model.ActivityId;
+        expense1ToInsert.Add(expense1);
+
+        await expense1Grid.InsertAfterRow(expense1, row);
+    }
+
+    async Task OnCreateRowGrid1(FarmActivityUsageDto expense1)
+    {
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        expense1.FarmId = Model.FarmId;
+        expense1.ActivityId = Model.ActivityId;
+        var obj = await FarmActivityUsageService.CreateFarmActivityUsageAsync(expense1).ConfigureAwait(false);
+        if (obj is not null)
+        {
+            expense1ToInsert.Remove(expense1);
+            await LoadFarmUsageExpenses().ConfigureAwait(false);
+            await NotificationService.ShowSuccess("New usage expense successfully created.");
+        }
+        else
+            await NotificationService.ShowError("Unable to create new usage expense.");
+
+        DialogService.Close(null);
+    }
+
+    void OnItemChange(FarmActivityUsageDto expense1)
+    {
+        var inventory = inventories.FirstOrDefault(i => i.InventoryId == expense1.InventoryId);
+        if (inventory != null)
+        {
+            expense1.ItemName = inventory.InventoryItemName;
+            expense1.Unit = inventory.InventoryUnit;
+            expense1.UnitId = inventory.UnitId;
+            StateHasChanged();
+        }
+    }
+}

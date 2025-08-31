@@ -1,0 +1,86 @@
+﻿@using Radzen
+@using Radzen.Blazor
+
+@inject NavigationManager Navigation
+
+<div class="hero-section text-white text-center d-flex align-items-center justify-content-center">
+    <div>
+        <h1 class="display-4 fw-bold">umanhan FMS</h1>
+        <p class="lead mb-4">Plan. Plant. Track. — Smart Farming Starts Here.</p>
+        <RadzenButton Text="Explore Features" Click="@(() => ScrollToId("features"))" Class="rz-button-primary umh-me-1rem" />
+        <RadzenButton Text="Get Started" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("/signup"))" />
+    </div>
+</div>
+
+<section id="features" class="container py-5 text-center">
+    <h2 class="mb-4">Key Features</h2>
+    <RadzenRow>
+        <RadzenColumn Width="4">
+            <i class="fas fa-seedling fa-2x text-success mb-2"></i>
+            <h5>Activity Planner</h5>
+            <p>Schedule planting, fertilizing, irrigation, and harvesting with ease.</p>
+        </RadzenColumn>
+        <RadzenColumn Width="4">
+            <i class="fas fa-chart-line fa-2x text-success mb-2"></i>
+            <h5>Farm Analytics</h5>
+            <p>Monitor yield, sales, and expenses through visual dashboards and KPIs.</p>
+        </RadzenColumn>
+        <RadzenColumn Width="4">
+            <i class="fas fa-map fa-2x text-success mb-2"></i>
+            <h5>Interactive Farm Map</h5>
+            <p>Visualize plots, zones, and activities on an intuitive map interface.</p>
+        </RadzenColumn>
+    </RadzenRow>
+</section>
+
+<section class="bg-light py-5">
+    <div class="container text-center">
+        <h2 class="mb-4">Why Choose umanhan FMS?</h2>
+        <RadzenRow>
+            <RadzenColumn Width="3">
+                <i class="fas fa-cloud fa-2x text-success mb-2"></i>
+                <h6>Cloud-Enabled</h6>
+                <p>Access your farm anytime, anywhere.</p>
+            </RadzenColumn>
+            <RadzenColumn Width="3">
+                <i class="fas fa-lock fa-2x text-success mb-2"></i>
+                <h6>Secure</h6>
+                <p>Role-based access with encryption and backups.</p>
+            </RadzenColumn>
+            <RadzenColumn Width="3">
+                <i class="fas fa-users fa-2x text-success mb-2"></i>
+                <h6>Team Collaboration</h6>
+                <p>Invite workers and assign farm tasks collaboratively.</p>
+            </RadzenColumn>
+            <RadzenColumn Width="3">
+                <i class="fas fa-mobile-alt fa-2x text-success mb-2"></i>
+                <h6>Mobile Ready</h6>
+                <p>Responsive design on all devices.</p>
+            </RadzenColumn>
+        </RadzenRow>
+    </div>
+</section>
+
+<section class="cta text-white text-center py-5 umh-bg-color-green-light">
+    <div class="container">
+        <h2 class="mb-3">Start Managing Your Farm Like a Pro</h2>
+        <RadzenButton Text="Sign Up Now" Class="rz-button-light me-2" Click="@(() => Navigation.NavigateTo("/signup"))" />
+        <RadzenButton Text="Try Demo" ButtonStyle="ButtonStyle.Primary" Class="rz-button-outline-light" Click="@(() => Navigation.NavigateTo("/demo"))" />
+    </div>
+</section>
+
+<footer class="text-center py-4 bg-light">
+    <p class="mb-0">&copy; 2025 umanhan FMS. All rights reserved.</p>
+    <small>Made with ❤️ for smart Filipino farmers.</small>
+</footer>
+
+@code {
+    private void ScrollToId(string elementId)
+    {
+        _ = JS.InvokeVoidAsync("document.getElementById", elementId).AsTask();
+        _ = JS.InvokeVoidAsync("scrollToElementById", elementId).AsTask();
+    }
+
+    [Inject]
+    private IJSRuntime JS { get; set; }
+}

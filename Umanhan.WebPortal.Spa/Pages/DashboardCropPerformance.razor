@@ -1,0 +1,494 @@
+﻿@page "/crop-performance"
+@using System.Globalization
+@using System.Text.Json.Serialization
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject TooltipService TooltipService
+@inject NlpService NlpService
+@inject ReportService ReportService
+
+<PermissionView Permission="Farm.Read">
+    <ChildContent>
+        <PageTitle>Crop Performance Dashboard</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/crop-performance" Text="Crop Performance" />
+        </RadzenBreadCrumb>
+        <RadzenRow>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" class="rz-my-8">
+                <RadzenText TextStyle="TextStyle.H5">Crop Performance</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@farmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(farmName))" />
+            </RadzenStack>
+            <div class="rz-ms-auto">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenCard Variant="Variant.Outlined" class="rz-mt-2 umh-badge">
+                        <RadzenText TextStyle="TextStyle.Caption">@activeRangeMessage</RadzenText>
+                    </RadzenCard>
+                    @if (showActiveRange)
+                    {
+                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Icon="filter_alt" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Lighter">
+                            <ChildContent>
+                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                <RadzenSplitButtonItem Text="Current Year" Value="CurrentYear" />
+                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                            </ChildContent>
+                        </RadzenSplitButton>
+                    }
+                    else
+                    {
+                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Variant="Variant.Text" Icon="filter_alt">
+                            <ChildContent>
+                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                <RadzenSplitButtonItem Text="Current Year" Value="CurrentYear" />
+                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                            </ChildContent>
+                        </RadzenSplitButton>
+                    }
+                </RadzenStack>
+            </div>
+        </RadzenRow>
+        <RadzenRow class="rz-mb-8">
+            <RadzenColumn SizeMD="10">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Yield per Crop</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Total quantity harvested per crop during the selected period."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                            @foreach (var item in yieldPerCropPerUnit)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start">
+                                    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                                        <RadzenText Text="@item.Product" />
+                                        @if (!string.IsNullOrEmpty(item.Variety))
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Variant="Variant.Outlined" Shade="Shade.Darker" Text="@item.Variety" class="umh-f-xx-small-mt-n15px" />
+                                        }
+                                    </RadzenStack>
+                                    <RadzenBadge IsPill=true BadgeStyle="BadgeStyle.Base" Text="@item.Unit" />
+                                    <RadzenText TextStyle="TextStyle.Body1" class="">@item.Value.ToString("n0")</RadzenText>
+                                </RadzenStack>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                    @* <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Yield per Hectare</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Average yield per hectare for each crop, indicating land productivity."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                            @foreach (var item in yieldPerCropPerUnitPerHectare)
+                            {
+                                <RadzenText Text="@item.Product" />
+                                <RadzenText Text="@item.Variety" />
+                                <RadzenBadge IsPill=true BadgeStyle="BadgeStyle.Base" Text="@item.Unit" />
+                                <RadzenText TextStyle="TextStyle.Body1" class="">@item.Value.ToString("n0")</RadzenText>
+                            }
+                        </RadzenStack>
+                    </RadzenCard> *@
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Cost per Unit</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Production cost per unit of crop output."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                            @foreach (var item in costPerUnit)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start">
+                                    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                                        <RadzenText Text="@item.Product" />
+                                        @if (!string.IsNullOrEmpty(item.Variety))
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Variant="Variant.Outlined" Shade="Shade.Darker" Text="@item.Variety" class="umh-f-xx-small-mt-n15px" />
+                                        }
+                                    </RadzenStack>
+                                    <RadzenBadge IsPill=true BadgeStyle="BadgeStyle.Base" Text="@item.Unit" />
+                                    <RadzenText TextStyle="TextStyle.Body1" class="">@item.Value.ToString("n0")</RadzenText>
+                                </RadzenStack>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Profitability per Crop</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Revenue minus cost per crop, showing actual profit generated."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                            @foreach (var item in profitPerCrop)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start">
+                                    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                                        <RadzenText Text="@item.Product" />
+                                        @if (!string.IsNullOrEmpty(item.Variety))
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Variant="Variant.Outlined" Shade="Shade.Darker" Text="@item.Variety" class="umh-f-xx-small-mt-n15px" />
+                                        }
+                                    </RadzenStack>
+                                    <RadzenBadge IsPill=true BadgeStyle="BadgeStyle.Base" Text="@item.Unit" />
+                                    <RadzenText TextStyle="TextStyle.Body1" class="">@item.Value.ToString("n0")</RadzenText>
+                                </RadzenStack>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                    @* <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Actual vs. Expected Yield</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Comparison between planned and actual yield to measure performance accuracy."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                            @foreach (var item in actualExpectedYield)
+                            {
+                                <RadzenText Text="@item.Product" />
+                                <RadzenText Text="@item.Variety" />
+                                <RadzenBadge IsPill=true BadgeStyle="BadgeStyle.Base" Text="@item.Unit" />
+                                <RadzenText TextStyle="TextStyle.Body1" class="">@item.Quantity.ToString("n0")</RadzenText>
+                            }
+                        </RadzenStack>
+                    </RadzenCard> *@
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="2">
+                <RadzenStack AlignItems="AlignItems.Start">
+                    <RadzenButton Icon="auto_awesome" class="ai-color rz-ms-auto" title="Generate insights" Click="@OpenSideDialog" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow class="rz-mb-3">
+            <RadzenColumn Size="12" SizeLG="7">
+                <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3" Text="Top Crops vs Low Performers" />
+                @if (cropPerformances.Any())
+                {
+                    <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                    AllowGrouping="true" AllowSorting="true" PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left"
+                                    Data="@cropPerformances" TItem="ProductPerformanceDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" ShowPagingSummary="true"
+                                    IsLoading=@isLoading Sort="@ShowLoading" Page="@ShowLoading" Group="@ShowLoading" Filter="@ShowLoading">
+                        <Columns>
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.Product)" Title="Crop" Frozen="true" Width="250px">
+                                <Template Context="perf">
+                                    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                                        <RadzenText TextStyle="TextStyle.Body1" Text="@perf.Product" />
+                                        @* @if (!string.IsNullOrEmpty(perf.Variety))
+                                        {
+                                            <RadzenBadge IsPill="true" BadgeStyle="BadgeStyle.Base" Text="@perf.Variety" />
+                                        } *@
+                                    </RadzenStack>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.Unit)" Title="Unit" Width="150px">
+                                <Template Context="perf">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@perf.Unit" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.Yield)" Title="Yield" Width="150px" FormatString="{0:n0}" />
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.Profit)" Title="Profit" Width="180px" FormatString="{0:n2}">
+                                <Template Context="perf">
+                                    <RadzenText TextStyle="TextStyle.Body1" Text="@perf.Profit.ToString("n2")" class="umh-fw-600" />
+                                </Template>
+                                <FooterTemplate>
+                                    Total: <strong>@cropPerformances.Sum(x => x.Profit).ToString("n2")</strong>
+                                </FooterTemplate>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.ProfitMargin)" Title="Profit Margin (%)" Width="200px" FormatString="{0:p1}" />
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.Cogs)" Title="COGS" Width="150px" FormatString="{0:n2}">
+                                <FooterTemplate>
+                                    <strong>@cropPerformances.Sum(x => x.Cogs).ToString("n2")</strong>
+                                </FooterTemplate>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.Sales)" Title="Sales" Width="150px" FormatString="{0:n2}">
+                                <FooterTemplate>
+                                    <strong>@cropPerformances.Sum(x => x.Sales).ToString("n2")</strong>
+                                </FooterTemplate>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Property="@nameof(ProductPerformanceDto.CostPerUnit)" Title="Cost/Unit" Width="150px" FormatString="{0:n2}" />
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+                else
+                {
+                    <NoDataAvailable />
+                }
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeLG="5">
+                <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3" Text="Year-over-Year Yield Comparison" />
+                @if (yieldCurrent.Any() || yieldPrevious.Any())
+                {
+                    <RadzenCard>
+                        <RadzenChart class="umh-height-400px">
+                            <RadzenBarSeries Data="@yieldCurrent" CategoryProperty="Product" Title="Curr" ValueProperty="Yield">
+                                <RadzenSeriesDataLabels Visible="true" />
+                            </RadzenBarSeries>
+                            <RadzenBarSeries Data="@yieldPrevious" CategoryProperty="Product" Title="Prev" ValueProperty="Yield">
+                                <RadzenSeriesDataLabels Visible="true" />
+                            </RadzenBarSeries>
+                            <RadzenValueAxis>
+                                <RadzenGridLines Visible="true" />
+                            </RadzenValueAxis>
+                            <RadzenBarOptions Radius="5" Height="20" />
+                        </RadzenChart>
+                    </RadzenCard>
+                }
+                else
+                {
+                    <NoDataAvailable />
+                }
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    private string farmName = "Loading...";
+    private Guid farmId;
+
+    private DateTime today = DateTime.Today;
+    private DateTime startDate;
+    private DateTime endDate;
+    private DateTime previousStartDate;
+    private DateTime previousEndDate;
+    private bool showActiveRange = false;
+    private string activeRangeMessage = "Loading crop performances...";
+    private bool isLoading = false;
+    private bool hasLoadedSecondaryData = false;
+    private MarkupString apiTextHtml;
+
+    private List<ProductPerformanceDto> cropPerformances = new();
+    private List<ProductPerformanceDto> yieldCurrent = new();
+    private List<ProductPerformanceDto> yieldPrevious = new();
+
+    private List<ProductPerformanceKpiDto> yieldPerCropPerUnit = new();
+    private List<ProductPerformanceKpiDto> yieldPerCropPerUnitPerHectare = new();
+    private List<ProductPerformanceKpiDto> costPerUnit = new();
+    private List<ProductPerformanceKpiDto> profitPerCrop = new();
+    // private List<ProductPerformanceKpiDto> actualExpectedYield = new();
+
+
+    void ShowTooltip(ElementReference el, string tooltip) => TooltipService.Open(el, tooltip, new TooltipOptions { Duration = 5000 });
+
+
+    async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+            _ = Task.Run(async () =>
+            {
+                SetThisMonth();
+                await LoadList().ConfigureAwait(false);
+
+                await Task.Delay(2000);
+                await LoadKpis().ConfigureAwait(false);
+
+                await Task.Delay(2000);
+                await LoadCharts().ConfigureAwait(false);
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        farmId = Settings.FarmId;
+        farmName = Settings.FarmName;
+    }
+
+    async Task TryReloadList()
+    {
+        if (startDate != previousStartDate || endDate != previousEndDate)
+        {
+            await LoadList().ConfigureAwait(false);
+
+            await Task.Delay(2000);
+            await LoadKpis().ConfigureAwait(false);
+        }
+    }
+
+    async Task LoadList()
+    {
+        var response = await ReportService.GetProductPerformancesAsync(Settings.FarmId, startDate, endDate);
+        if (response.IsSuccess)
+        {
+            cropPerformances = response.Data.ToList();
+
+            showActiveRange = true;
+            activeRangeMessage = $"Showing crop performances from {startDate:MMM dd, yyyy} to {endDate:MMM dd, yyyy}";
+        }
+        else
+        {
+            await NotificationService.ShowError("Failed to load crop performance data.");
+        }
+    }
+
+    async Task LoadKpis()
+    {
+        yieldPerCropPerUnit = cropPerformances
+            .Select(c => new ProductPerformanceKpiDto
+            {
+                Product = c.Product,
+                Variety = c.Variety,
+                Unit = c.Unit,
+                Value = c.Yield
+            }).ToList();
+
+        // yieldPerCropPerUnitPerHectare = await ReportService.GetYieldPerCropPerUnitPerHectareAsync(Settings.FarmId, startDate, endDate);
+
+        costPerUnit = cropPerformances
+            .Select(c => new ProductPerformanceKpiDto
+            {
+                Product = c.Product,
+                Variety = c.Variety,
+                Unit = c.Unit,
+                Value = c.CostPerUnit
+            }).ToList();
+
+        profitPerCrop = cropPerformances.Select(c => new ProductPerformanceKpiDto
+        {
+            Product = c.Product,
+            Variety = c.Variety,
+            Unit = c.Unit,
+            Value = c.Profit
+        }).ToList();
+    }
+
+    async Task LoadCharts()
+    {
+        var response = await ReportService.GetProductPerformancesByYearAsync(Settings.FarmId, today.Year);
+        if (response.IsSuccess)
+        {
+            yieldCurrent = response.Data.ToList();
+        }
+        var response2 = await ReportService.GetProductPerformancesByYearAsync(Settings.FarmId, today.Year - 1);
+        if (response2.IsSuccess)
+        {
+            yieldPrevious = response2.Data.ToList();
+        }
+    }
+
+    async Task OnPresetClicked(RadzenSplitButtonItem item)
+    {
+        if (item == null)
+        {
+            SetThisMonth();
+            return;
+        }
+
+        activeRangeMessage = "Please wait...";
+
+        previousStartDate = startDate;
+        previousEndDate = endDate;
+
+        switch (item.Value)
+        {
+            case "Last6Months":
+                var last6Months = today.AddMonths(-6);
+                startDate = new DateTime(last6Months.Year, last6Months.Month, 1);
+                endDate = new DateTime(today.Year, today.Month, 1).AddDays(-1);
+                break;
+
+            case "CurrentYear":
+                startDate = new DateTime(today.Year, 1, 1);
+                endDate = new DateTime(today.Year, 12, 31);
+                break;
+
+            case "LastYear":
+                startDate = new DateTime(today.Year - 1, 1, 1);
+                endDate = new DateTime(today.Year - 1, 12, 31);
+                break;
+
+            case "Custom":
+                var result = await DialogService.OpenAsync<CustomDateRangeDialog>("Custom Date Range",
+                    new Dictionary<string, object>()
+                    {
+                        { "AllowFuture", true }
+                    },
+                    new DialogOptions() { Width = "400px", Height = "350px" });
+
+                if (result is ValueTuple<DateOnly, DateOnly> range)
+                {
+                    startDate = range.Item1.ToDateTime(TimeOnly.MinValue);
+                    endDate = range.Item2.ToDateTime(TimeOnly.MinValue);
+                }
+                break;
+
+            default:
+                //"ThisMonth":
+                SetThisMonth();
+                break;
+        }
+
+        await TryReloadList().ConfigureAwait(false);
+    }
+
+    void SetThisMonth()
+    {
+        startDate = new DateTime(today.Year, today.Month, 1);
+        endDate = startDate.AddMonths(1).AddDays(-1);
+    }
+
+    async Task OpenSideDialog()
+    {
+        string title = "Data Insight";
+        string prompt = "You are an agricultural advisor. A farm has provided performance year-over-year data for several crops.";
+        var data = new
+        {
+            CropPerformancesCurrent = yieldCurrent,
+            CropPerformancesPrevious = yieldPrevious
+        };
+        string jsonData = System.Text.Json.JsonSerializer.Serialize(data);
+
+        await DialogService.OpenSideAsync<DataInsightSideDialog>("Performance Analysis",
+        parameters: new Dictionary<string, object>
+        {
+            { "JsonData", jsonData },
+            { "Prompt", prompt },
+            { "Title", title }
+        },
+        options: new SideDialogOptions
+        {
+            CloseDialogOnOverlayClick = true,
+            Position = DialogPosition.Right,
+            ShowMask = false
+        });
+    }
+
+    async Task CropRecommendation()
+    {
+        string prompt = "Based on the provided data, which crops should be expanded, reduced, rotated, or monitored? Give 1–2 sentences per crop with actionable advice.";
+        var data = new
+        {
+            Crops = JsonSerializer.Serialize(cropPerformances, new JsonSerializerOptions
+            {
+                WriteIndented = false,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            }),
+            Target = "Maximize farm profit while minimizing losses",
+            //Season = "",
+            //Weather = ""
+        };
+        var response = await NlpService.GenerateDataInsightAsync(prompt, JsonSerializer.Serialize(data)).ConfigureAwait(false);
+        if (response != null)
+        {
+
+        }
+        else
+            await NotificationService.ShowError("Failed to generate crop recommendation.");
+    }
+}

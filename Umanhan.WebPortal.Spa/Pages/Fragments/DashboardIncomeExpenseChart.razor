@@ -1,0 +1,14 @@
+﻿<RadzenChart class="umh-height-300px">
+    <RadzenCategoryAxis Categories="@MonthlyLabels" />
+    <RadzenLineSeries Data="@IncomeData" Title="Income" CategoryProperty="Month" ValueProperty="Amount" />
+    <RadzenLineSeries Data="@ExpenseData" Title="Expenses" CategoryProperty="Month" ValueProperty="Amount" />
+</RadzenChart>
+
+@code {
+    public class ChartItem { public string Month { get; set; } public decimal Amount { get; set; } }
+
+    [Parameter] public List<ChartItem> IncomeData { get; set; }
+    [Parameter] public List<ChartItem> ExpenseData { get; set; }
+
+    List<string> MonthlyLabels => IncomeData.Select(x => x.Month).ToList();
+}

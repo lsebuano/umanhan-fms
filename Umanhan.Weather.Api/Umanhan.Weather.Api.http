@@ -1,0 +1,6 @@
+@Umanhan.Weather.Api_HostAddress = http://localhost:7117
+
+GET {{Umanhan.Weather.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

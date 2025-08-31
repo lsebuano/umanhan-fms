@@ -1,0 +1,72 @@
+﻿@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+
+<div class="rz-p-3">
+    <RadzenTemplateForm Data="@this" Submit="@ApplyDateRange" TItem="object">
+        <div class="rz-mb-3">
+            <label class="form-label">Start Date</label>
+            <RadzenDatePicker @bind-Value="StartDate" class="umh-width-100" ShowTime=false />
+        </div>
+
+        <div class="rz-mb-3">
+            <label class="form-label">End Date</label>
+            <RadzenDatePicker @bind-Value="EndDate" class="umh-width-100" ShowTime=false />
+        </div>
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="1rem" class="rz-mt-4">
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(null))" />
+            <RadzenButton Text="Apply"
+            Disabled="@(!isValidRange)"
+            ButtonStyle="ButtonStyle.Primary"
+            Type="Submit" />
+        </RadzenStack>
+    </RadzenTemplateForm>
+</div>
+
+@code {
+    [Parameter] public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddDays(-30));
+    [Parameter] public DateOnly EndDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
+    [Parameter] public bool AllowFuture { get; set; } = false;
+
+    private const int maxAllowedDays = 365; // 1 year max
+    private bool isValidRange => GetValidationMessage();
+
+    private bool GetValidationMessage()
+    {
+        if (StartDate > EndDate)
+        {
+            //Console.WriteLine($"StartDate > EndDate");
+            NotificationService.ShowInfo("Start date cannot be after end date.", "Ohhh").GetAwaiter().GetResult();
+            return false;
+        }
+
+        if ((EndDate.ToDateTime(TimeOnly.MinValue) - StartDate.ToDateTime(TimeOnly.MinValue)).TotalDays > maxAllowedDays)
+        {
+            //Console.WriteLine($"TotalDays > maxAllowedDays");
+            NotificationService.ShowInfo($"Date range cannot exceed {maxAllowedDays} days.", "Ohhh").GetAwaiter().GetResult();
+            return false;
+        }
+
+        if (!AllowFuture)
+        {
+            if (StartDate > DateOnly.FromDateTime(DateTime.Today) || EndDate > DateOnly.FromDateTime(DateTime.Today))
+            {
+                //Console.WriteLine($"StartDate > DateOnly.FromDateTime(DateTime.Today) || EndDate > DateOnly.FromDateTime(DateTime.Today)");
+                NotificationService.ShowInfo("Dates cannot be in the future.", "Ohhh").GetAwaiter().GetResult();
+                return false;
+            }
+        }
+
+        //Console.WriteLine($"isValidRange = true");
+        return true;
+    }
+
+    private void ApplyDateRange()
+    {
+        bool isValid = GetValidationMessage();
+        if (isValidRange)
+        {
+            DialogService.Close((StartDate, EndDate));
+        }
+    }
+}

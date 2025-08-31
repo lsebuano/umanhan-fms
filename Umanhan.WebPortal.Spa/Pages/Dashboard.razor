@@ -1,0 +1,15 @@
+﻿@page "/dashboard"
+
+@if (DashboardType != null)
+{
+    <DynamicComponent Type="@DashboardType" />
+}
+else
+{
+    <DefaultDashboard />
+}
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+    [Parameter] public Type DashboardType { get; set; }
+}

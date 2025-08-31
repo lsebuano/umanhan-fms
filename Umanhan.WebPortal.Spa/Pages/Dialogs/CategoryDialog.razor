@@ -1,0 +1,155 @@
+﻿@inject DialogService DialogService
+@inject CategoryService CategoryService
+@inject AppNotificationService NotificationService
+@inject IValidator<CategoryDto> Validator
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+        <RadzenTemplateForm TItem="CategoryDto" Data="@obj" Submit="@SaveChanges">
+            <RadzenStack>
+                <FluentValidationValidator Validator="@Validator" />
+
+                <RadzenFormField Text="Category" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.CategoryName" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.CategoryName)" />
+
+                <RadzenFormField Text="Group" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.Group" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.Group)" />
+
+                <RadzenFormField Text="Group 2" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.Group2" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.Group2)" />
+
+                <RadzenFormField Text="Consumption Behavior" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.ConsumptionBehavior" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.ConsumptionBehavior)" />
+            </RadzenStack>
+
+            <RadzenFooter>
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                    <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                    <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                </RadzenStack>
+            </RadzenFooter>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+    private Guid objId;
+    private string mode = "Add";
+    private CategoryDto obj;
+    private string title = "Message";
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        objId = ObjId;
+        if (obj == null)
+        {
+            obj = new CategoryDto();
+        }
+        await LoadObj().ConfigureAwait(false);
+        // initialize the context
+        editContext = new EditContext(obj);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        //await LoadObj().ConfigureAwait(false);
+        // update the context
+        //editContext = new EditContext(obj);
+
+        if (objId != ObjId)
+        {
+            objId = ObjId;
+            await LoadObj().ConfigureAwait(false);
+            editContext = new EditContext(obj);
+        }
+    }
+
+    private async Task LoadObj()
+    {
+        if (!ObjId.Equals(Guid.Empty))
+        {
+            mode = "Edit";
+            var response = await CategoryService.GetCategoryByIdAsync(ObjId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+        else
+        {
+            mode = "Add";
+            obj = new CategoryDto();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            CategoryDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await CategoryService.CreateCategoryAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await CategoryService.UpdateCategoryAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+}

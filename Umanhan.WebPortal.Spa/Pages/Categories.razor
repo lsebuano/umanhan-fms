@@ -1,0 +1,212 @@
+﻿@page "/categories"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject CategoryService CategoryService
+@inject TaskService TaskService
+
+<PermissionView Permission="Masterdata.Full">
+    <ChildContent>
+        <PageTitle>Categories</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/categories" Text="Categories" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Categories</RadzenText>
+
+        @if (objList == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <RadzenRow>
+                <RadzenColumn Size="12" SizeMD="6">
+                    <div class="full-height-container">
+                        <RadzenDataGrid @ref="categoriesGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                        AllowSorting="true" PagerHorizontalAlign="HorizontalAlign.Left" Data="@objList" GridLines="DataGridGridLines.Vertical"
+                                        ColumnWidth="100%" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                        @bind-Value=@selectedObjList IsLoading=@isLoading Page="@ShowLoading" class="umh-height-70vh">
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                <RadzenButton Text="New" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@(() => OpenDialog(Guid.Empty))></RadzenButton>
+                            </HeaderTemplate>
+                            <Columns>
+                                <RadzenDataGridColumn Context="obj" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" Width="120px">
+                                    <Template Context="obj">
+                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                      Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => OpenDialog(obj.CategoryId))"
+                                                      @onclick:stopPropagation="true" title="Edit" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                      Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => Delete(obj))"
+                                                      @onclick:stopPropagation="true" title="Delete" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Property="@nameof(CategoryDto.CategoryName)" Title="Category" Frozen="false" Width="400px" />
+                                <RadzenDataGridColumn Property="@nameof(CategoryDto.Group)" Title="Group" Frozen="false" Width="150px" />
+                                <RadzenDataGridColumn Property="@nameof(CategoryDto.Group2)" Title="Group 2" Frozen="false" Width="150px" />
+                                <RadzenDataGridColumn Property="@nameof(CategoryDto.ConsumptionBehavior)" Title="Consumption Behavior" Frozen="false" Width="200px" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="6">
+                    <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                        <RadzenStack Gap="1rem">
+                            <RadzenCard Variant="Variant.Text" class="rz-background-color-primary-lighter rz-color-on-primary-lighter">
+                                Category: <b>@selectedObjList.FirstOrDefault()?.CategoryName</b>
+                            </RadzenCard>
+                            <RadzenTabs>
+                                <Tabs>
+                                    <RadzenTabsItem Text="Tasks">
+                                        <RadzenDataGrid @ref="tasksGrid" AllowFiltering="true" AllowPaging="true" ShowPagingSummary="true"
+                                                        Data="@(selectedObjList.FirstOrDefault()?.Tasks)">
+                                            <Columns>
+                                                <RadzenDataGridColumn Property="@nameof(TaskDto.TaskName)" Title="Task" />
+                                                @* <RadzenDataGridColumn Context="task" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true"
+                                                              FrozenPosition="FrozenColumnPosition.Right" Width="80px">
+                                            <Template Context="task">
+                                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                              Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => UnassignTaskFromCategory(task))"
+                                                              @onclick:stopPropagation="true" title="Remove from Category" />
+                                            </Template>
+                                        </RadzenDataGridColumn> *@
+                                            </Columns>
+                                        </RadzenDataGrid>
+                                    </RadzenTabsItem>
+                                    <RadzenTabsItem Text="Inventories">
+                                        <RadzenDataGrid @ref="inventoriesGrid" AllowFiltering="true" AllowPaging="true" ShowPagingSummary="true"
+                                                        Data="@(selectedObjList.FirstOrDefault()?.Inventories)">
+                                            <Columns>
+                                                <RadzenDataGridColumn Property="@nameof(InventoryDto.ItemName)" Title="Item" />
+                                                <RadzenDataGridColumn Property="@nameof(InventoryDto.Unit)" Title="Unit" />
+                                            </Columns>
+                                        </RadzenDataGrid>
+                                    </RadzenTabsItem>
+                                </Tabs>
+                            </RadzenTabs>
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenColumn>
+            </RadzenRow>
+        }
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    RadzenDataGrid<CategoryDto> categoriesGrid;
+    RadzenDataGrid<TaskDto> tasksGrid;
+    RadzenDataGrid<InventoryDto> inventoriesGrid;
+    private IEnumerable<CategoryDto>? objList;
+    private IList<CategoryDto> selectedObjList;
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync().ConfigureAwait(false);
+        await ShowLoading().ConfigureAwait(false);
+        await LoadList().ConfigureAwait(false);
+    }
+
+    private async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    private async Task LoadList(Guid? categoryId = null)
+    {
+        var response = await CategoryService.GetAllCategoriesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            objList = response.Data;
+            if (categoryId != null || categoryId != Guid.Empty)
+                selectedObjList = new List<CategoryDto>() { objList.FirstOrDefault() };
+            else
+                selectedObjList = new List<CategoryDto>() { objList.FirstOrDefault(x => x.CategoryId == categoryId) };
+        }
+        else
+        {
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+    }
+
+    private async Task OpenDialog(Guid id)
+    {
+        var result = await DialogService.OpenAsync<CategoryDialog>("Category",
+                    new Dictionary<string, object> { { "ObjId", id } },
+                    new DialogOptions()
+                        {
+                            Width = "50vw",
+                            Height = "80vh",
+                        });
+        // refresh grid if the dialog returns true
+        if (result != null)
+        {
+            await GridReload();
+        }
+    }
+
+    private async Task GridReload()
+    {
+        await LoadList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UnassignTaskFromCategory(TaskDto task)
+    {
+        if (task != null)
+        {
+            var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove {task.TaskName}?",
+                "Confirm Remove",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+            if (confirm == true)
+            {
+                var response = await TaskService.UnassignTaskFromCategoryAsync(task.TaskId).ConfigureAwait(false);
+                if (response != null)
+                {
+                    await NotificationService.ShowSuccess("Remove Successful");
+                    // refresh grid
+                    await LoadList(task.CategoryId);
+                }
+                else
+                {
+                    await NotificationService.ShowError("Oops! Something went wrong.");
+                }
+            }
+        }
+    }
+
+    private async Task Delete(CategoryDto obj)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove '{obj.CategoryName}'?",
+                "Confirm Remove",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await CategoryService.DeleteCategoryAsync(obj.CategoryId).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess("Delete Successful");
+                // refresh grid
+                await LoadList();
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+    }
+}

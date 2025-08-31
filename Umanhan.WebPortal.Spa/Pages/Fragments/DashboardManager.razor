@@ -1,0 +1,127 @@
+﻿@using Umanhan.Shared.Extensions
+@attribute [Authorize]
+@inject NavigationManager NavigationManager
+@inject FarmZoneService FarmZoneService
+@inject FarmService FarmService
+@inject WebAppSettingService AppSettingService
+@inject DialogService DialogService
+
+<PermissionView Permission="Farm.Read">
+    <ChildContent>
+        <RadzenRow class="rz-mb-5">
+            <RadzenColumn SizeMD="10">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                    <RadzenIcon Icon="nest_eco_leaf" class="umh-f-3rem" />
+                    <RadzenText TextStyle="TextStyle.H5" Visible="@(!string.IsNullOrEmpty(farmName))" class="umh-margin-0">@farmName</RadzenText>
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Success" Text="@farmSize" title="Farm Size in Hectares" class="umh-ml-4rem" />
+                    <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Success" Text="@($"{farmLat},{farmLng}")" title="Latitude, Longitude" />
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="2">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Reverse=true>
+                    <RadzenButton Icon="auto_awesome" class="ai-color" title="Ask AI Assistant" Click="@OpenSideDialog" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow class="rz-mb-5">
+            <RadzenColumn SizeMD="6">
+                @if (hasLoadedSecondaryData)
+                {
+                    <DashboardWeatherCards FarmLat="@farmLat" FarmLng="@farmLng"
+                                           FarmLocation="@farmLocation" FarmStaticMapUrl="@farmStaticMapUrl" />
+                }
+            </RadzenColumn>
+            <RadzenColumn SizeMD="3">
+                <DashboardPLAnalysis FarmId="farmId" />
+            </RadzenColumn>
+            <RadzenColumn SizeMD="3">
+                <DashboardFarmActivities FarmId="farmId" />
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    private string farmName = "Loading...";
+    private Guid farmId;
+    private double farmLat;
+    private double farmLng;
+    private string farmSize = "-";
+    private string farmLocation;
+    private string farmStaticMapUrl;
+
+    // private FarmZoneDto selectedZone = new();
+
+    // private IEnumerable<FarmZoneDto> zones = [];
+
+    // default center, Manila
+    private double lat = 14.598722892908546;
+    private double lng = 120.98412850749237;
+
+    private bool hasLoadedSecondaryData = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+
+            await LoadFarmDetails().ConfigureAwait(false);
+
+            StateHasChanged();
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Settings.FarmId;
+        farmName = Settings.FarmName;
+
+        //Console.WriteLine($"LoadSettings.farmId: {farmId}");
+        //Console.WriteLine($"LoadSettings.farmName: {farmName}");
+
+        StateHasChanged();
+    }
+
+    async Task LoadFarmDetails()
+    {
+        var response = await FarmService.GetFarmByIdAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            var farm = response.Data;
+            if (farm != null)
+            {
+                farmSize = $"{farm.SizeInHectares:n1} HA";
+                farmLat = Convert.ToDouble(farm.Lat);
+                farmLng = Convert.ToDouble(farm.Lng);
+                farmLocation = string.IsNullOrEmpty(farm.FullAddress) ? farm.Location : farm.FullAddress;
+                farmStaticMapUrl = farm.StaticMapUrl;
+            }
+        }
+    }
+
+    async Task OpenSideDialog()
+    {
+        await DialogService.OpenSideAsync<AskAISideDialog>("AI Assistant",
+        options: new SideDialogOptions
+        {
+            CloseDialogOnOverlayClick = true,
+            Position = DialogPosition.Right,
+            ShowMask = false
+        });
+    }
+}

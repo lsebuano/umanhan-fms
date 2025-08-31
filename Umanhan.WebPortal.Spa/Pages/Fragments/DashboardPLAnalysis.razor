@@ -1,0 +1,489 @@
+﻿@inject TooltipService TooltipService
+@inject DialogService DialogService
+@inject ReportService ReportService
+
+<RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Normal" JustifyContent="JustifyContent.Start">
+    <RadzenRow>
+
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+            <RadzenIcon Icon="monitoring" />
+            <RadzenText TextStyle="TextStyle.H6" class="umh-margin-0">P&L Analysis</RadzenText>
+        </RadzenStack>
+
+        <div class="rz-ms-auto">
+            @if (showActiveRange)
+            {
+                <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Icon="filter_alt" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Lighter">
+                    <ChildContent>
+                        <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                        <RadzenSplitButtonItem Text="Last Month" Value="LastMonth" />
+                        <RadzenSplitButtonItem Text="This Year" Value="ThisYear" />
+                        @* <RadzenSplitButtonItem Text="Custom Range" Value="Custom" /> *@
+                    </ChildContent>
+                </RadzenSplitButton>
+            }
+            else
+            {
+                <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Variant="Variant.Text" Icon="filter_alt">
+                    <ChildContent>
+                        <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                        <RadzenSplitButtonItem Text="Last Month" Value="LastMonth" />
+                        <RadzenSplitButtonItem Text="This Year" Value="ThisYear" />
+                        @* <RadzenSplitButtonItem Text="Custom Range" Value="Custom" /> *@
+                    </ChildContent>
+                </RadzenSplitButton>
+            }
+        </div>
+    </RadzenRow>
+
+    <RadzenCard Variant="Variant.Outlined" class="umh-padding-02rem-07rem">
+        <RadzenText TextStyle="TextStyle.Caption">@activeRangeMessage</RadzenText>
+        @* <RadzenText TextStyle="TextStyle.Caption">Showing KPIs from @(startDate.ToString("MMM dd, yyyy")) to @(endDate.ToString("MMM dd, yyyy"))</RadzenText> *@
+        @* <RadzenText TextStyle="TextStyle.Caption">Showing KPIs from x to x</RadzenText> *@
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("total_revenue"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Total Revenue</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Total income earned from all farm product sales during the selected period."))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenIcon Icon="currency_ruble" />
+            <RadzenText TextStyle="TextStyle.H5" class="umh-width-300px" title="@tot.Key.ToString("n2")" >@tot.Value</RadzenText>
+            <RadzenSparkline class="umh-width-100 umh-height-30px">
+                <RadzenAreaSeries Smooth="false" Data="@totList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("cost_of_goods_sold"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Cost of Goods Sold</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Direct costs spent to produce and deliver what was sold."))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenIcon Icon="sprinkler" />
+            <RadzenText TextStyle="TextStyle.H5" title="@cog.Key.ToString("n2")" class="umh-width-300px">@cog.Value</RadzenText>
+            <RadzenSparkline class="umh-width-100 umh-height-30px" >
+                <RadzenAreaSeries Smooth="false" Data="@cogList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("gross_profit"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Gross Profit</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "The difference between total revenue and cost of goods sold for the selected period."))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenIcon Icon="money_bag" />
+            <RadzenText TextStyle="TextStyle.H5" title="@gpr.Key.ToString("n2")" class="umh-width-300px">@gpr.Value</RadzenText>
+            <RadzenSparkline class="umh-width-100 umh-height-30px">
+                <RadzenAreaSeries Smooth="false" Data="@gprList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("operating_expenses"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Operating Expenses</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Overhead costs not tied to production."))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenIcon Icon="receipt_long" />
+            <RadzenText TextStyle="TextStyle.H5" title="@opx.Key.ToString("p1")" class="umh-width-300px">@opx.Value</RadzenText>
+            <RadzenText title="Operating Expense Ratio. Portion of revenue used to cover indirect costs like admin, utilities, and logistics." Text="@oer.Value" TextStyle="TextStyle.Body1" />
+            <RadzenSparkline class="umh-width-100 umh-height-30px">
+                <RadzenAreaSeries Smooth="false" Data="@opxList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("net_profit"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Net Profit</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Actual earnings"))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenIcon Icon="money" />
+            <RadzenText TextStyle="TextStyle.H5" title="@npr.Key.ToString("n2")" class="umh-width-300px">@npr.Value</RadzenText>
+            <RadzenSparkline class="umh-width-100 umh-height-30px">
+                <RadzenAreaSeries Smooth="false" Data="@nprList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("net_profit_margin"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Net Profit Margin</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "The percentage of revenue left after all costs—direct and indirect—are paid."))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenIcon Icon="savings" />
+            <RadzenText TextStyle="TextStyle.H5" title="@npm.Key.ToString("p1")" class="umh-width-300px">@npm.Value</RadzenText>
+            <RadzenSparkline class="umh-width-100 umh-height-30px">
+                <RadzenAreaSeries Smooth="false" Data="@npmList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("total_donated"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Total Donated</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Total quantity of farm goods donated to beneficiaries."))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+                @foreach (var item in donated)
+                {
+                    <RadzenText TextStyle="TextStyle.Body1" title="@item.Value.ToString("n1")">@item.Value.ToString("n0")</RadzenText>
+                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@item.Key" IsPill=true class="rz-me-3" />
+                }
+            </RadzenStack>
+            <RadzenSparkline class="umh-width-100 umh-height-30px">
+                <RadzenAreaSeries Smooth="false" Data="@donatedList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard Variant="Variant.Flat" @onclick="@(args => ShowDrillDown("total_spoilage"))" class="umh-cursor-pointer">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2">Total Spoilage</RadzenText>
+            <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Recorded quantity lost due to spoilage during the selected period."))" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            @foreach (var item in spoilage)
+            {
+                <RadzenText TextStyle="TextStyle.Body1" title="@item.Value.ToString("n1")">@item.Value.ToString("n0")</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@item.Key" IsPill=true class="rz-me-3" />
+            }
+            <RadzenSparkline class="umh-width-100 umh-height-30px">
+                <RadzenAreaSeries Smooth="false" Data="@spoilageList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.Date)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                <RadzenCategoryAxis Visible="false" Padding="-20" />
+            </RadzenSparkline>
+        </RadzenStack>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid FarmId { get; set; }
+
+    private List<RadzenSplitButtonItem> dateRangePresets = new()
+    {
+        new RadzenSplitButtonItem { Text = "This Month", Value="ThisMonth" },
+        new RadzenSplitButtonItem { Text = "Last Month", Value="LastMonth" },
+        new RadzenSplitButtonItem { Text = "This Year", Value="ThisYear" },
+        new RadzenSplitButtonItem { Text = "Custom Range", Value="Custom" }
+    };
+
+    private string dateToday;
+    private DateTime today = DateTime.Today.ToLocalTime();
+    private DateTime startDate;
+    private DateTime endDate;
+    private DateTime previousStartDate;
+    private DateTime previousEndDate;
+
+    private string selectedRange = "ThisMonth";
+    private DateTime customStartDate = DateTime.Today.AddDays(-30);
+    private DateTime customEndDate = DateTime.Today;
+
+    private bool showActiveRange = false;
+    private string activeRangeMessage = "Loading KPIs...";
+
+    private KeyValuePair<decimal, string> cog;
+    private KeyValuePair<decimal, string> npm;
+    private KeyValuePair<decimal, string> oer;
+    private KeyValuePair<decimal, string> tot;
+    private KeyValuePair<decimal, string> gpr;
+    private KeyValuePair<decimal, string> npr;
+    private KeyValuePair<decimal, string> opx;
+    // private KeyValuePair<decimal, string> gmp;
+    // private KeyValuePair<decimal, string> yph;
+    private Dictionary<string, decimal> donated = new Dictionary<string, decimal>();
+    private Dictionary<string, decimal> spoilage = new Dictionary<string, decimal>();
+
+    private IEnumerable<SparklineChartDto> totList;
+    private IEnumerable<SparklineChartDto> cogList;
+    private IEnumerable<SparklineChartDto> oerList;
+    private IEnumerable<SparklineChartDto> opxList;
+    private IEnumerable<SparklineChartDto> npmList;
+    private IEnumerable<SparklineChartDto> gprList;
+    private IEnumerable<SparklineChartDto> nprList;
+    // private IEnumerable<SparklineChartDto> gmpList;
+    // private IEnumerable<SparklineChartDto> yphList;
+    private IEnumerable<SparklineChartDto> donatedList;
+    private IEnumerable<SparklineChartDto> spoilageList;
+
+    void ShowTooltip(ElementReference el, string tooltip) => TooltipService.Open(el, tooltip, new TooltipOptions { Duration = 5000 });
+
+    protected override async Task OnInitializedAsync()
+    {
+        dateToday = today.ToString("ddd, d MMMM yyyy");
+
+        SetThisMonth();
+        await LoadDashboardKpis().ConfigureAwait(false);
+
+        await Task.Delay(3000);
+        await LoadSparklineCharts().ConfigureAwait(false);
+    }
+
+    void SetThisMonth()
+    {
+        startDate = new DateTime(today.Year, today.Month, 1).ToLocalTime();
+        endDate = startDate.AddMonths(1).AddDays(-1);
+    }
+
+    async Task OnDateRangeChanged(object value)
+    {
+        switch (value?.ToString())
+        {
+            case "ThisMonth":
+                SetThisMonth();
+                break;
+
+            case "LastMonth":
+                var lastMonth = today.AddMonths(-1);
+                startDate = new DateTime(lastMonth.Year, lastMonth.Month, 1).ToLocalTime();
+                endDate = startDate.AddMonths(1).AddDays(-1);
+                break;
+
+            case "ThisYear":
+                startDate = new DateTime(today.Year, 1, 1).ToLocalTime();
+                endDate = new DateTime(today.Year, 12, 31).ToLocalTime();
+                break;
+
+            case "Custom":
+                startDate = customStartDate;
+                endDate = customEndDate;
+                break;
+
+            default:
+                startDate = today.AddMonths(-1);
+                endDate = today;
+                break;
+        }
+
+        // Call your API or data service here with startDate and endDate
+        await LoadDashboardKpis().ConfigureAwait(false);
+    }
+
+    async Task LoadDashboardKpis()
+    {
+        //Console.WriteLine("LoadDashboardKpis");
+        //Console.WriteLine($"startDate: {startDate}");
+        //Console.WriteLine($"endDate: {endDate}");
+
+        var cogValue = await ReportService.GetCostOfGoodsSoldAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        var npmValue = await ReportService.GetNetProfitMarginAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        var oerValue = await ReportService.GetOperatingExpenseRatioAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        var totValue = await ReportService.GetTotalRevenueAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        var gprValue = await ReportService.GetTotalGrossProfitAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        var nprValue = await ReportService.GetTotalNetProfitAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        var opxValue = await ReportService.GetTotalOperatingExpensesAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        // var gmpValue = await ReportService.GetGrossMarginPercentAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        //var yphValue = await ReportService.GetYieldPerHectareAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        donated = await ReportService.GetTotalDonatedAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+        spoilage = await ReportService.GetTotalSpoilageAsync(FarmId, startDate, endDate).ConfigureAwait(false);
+
+        var cogString = cogValue.ToNumberCompact();
+        var npmString = npmValue.ToString("p1");
+        var oerString = oerValue.ToString("p1");
+        var totString = totValue.ToNumberCompact();
+        var gprString = gprValue.ToNumberCompact();
+        var nprString = nprValue.ToNumberCompact();
+        var opxString = opxValue.ToNumberCompact();
+        // var gmpString = gmpValue.ToNumberCompact();
+        //var yphString = yphValue.ToNumberCompact();
+
+        cog = new KeyValuePair<decimal, string>(cogValue, cogString);
+        npm = new KeyValuePair<decimal, string>(npmValue, npmString);
+        oer = new KeyValuePair<decimal, string>(oerValue, oerString);
+        tot = new KeyValuePair<decimal, string>(totValue, totString);
+        gpr = new KeyValuePair<decimal, string>(gprValue, gprString);
+        npr = new KeyValuePair<decimal, string>(nprValue, nprString);
+        opx = new KeyValuePair<decimal, string>(opxValue, opxString);
+        // gmp = new KeyValuePair<decimal, string>(gmpValue, gmpString);
+        //yph = new KeyValuePair<decimal, string>(yphValue, yphString);
+
+        showActiveRange = true;
+        activeRangeMessage = $"Showing KPIs from {startDate:MMM dd, yyyy} to {endDate:MMM dd, yyyy}";
+        //StateHasChanged();
+    }
+
+    async Task LoadSparklineCharts()
+    {
+        //Console.WriteLine("LoadSparklineCharts");
+
+        // 12 months
+        var start = new DateTime(endDate.Year, 1, 1).ToLocalTime();
+        var end = new DateTime(endDate.Year, 12, 31).ToLocalTime();
+
+        //Console.WriteLine($"LoadSparklineCharts:start: {start}");
+        //Console.WriteLine($"LoadSparklineCharts:end: {end}");
+
+        cogList = await ReportService.GetCostOfGoodsSoldListAsync(FarmId, start, end).ConfigureAwait(false);
+        gprList = await ReportService.GetGrossProfitListAsync(FarmId, start, end).ConfigureAwait(false);
+        nprList = await ReportService.GetNetProfitListAsync(FarmId, start, end).ConfigureAwait(false);
+        npmList = await ReportService.GetNetProfitMarginListAsync(FarmId, start, end).ConfigureAwait(false);
+        //oerList = await ReportService.GetOperatingExpenseRatioListAsync(FarmId, start, end).ConfigureAwait(false);
+        opxList = await ReportService.GetOperatingExpenseListAsync(FarmId, start, end).ConfigureAwait(false);
+        totList = await ReportService.GetTotalRevenueListAsync(FarmId, start, end).ConfigureAwait(false);
+        donatedList = await ReportService.GetTotalDonatedListAsync(FarmId, start, end).ConfigureAwait(false);
+        spoilageList = await ReportService.GetTotalSpoilageListAsync(FarmId, start, end).ConfigureAwait(false);
+    }
+
+    async Task TryReloadDashboard()
+    {
+        //Console.WriteLine("TryReloadDashboard");
+        if (startDate != previousStartDate || endDate != previousEndDate)
+        {
+            //Console.WriteLine("startDate != previousStartDate || endDate != previousEndDate");
+            //previousStartDate = startDate;
+            //previousEndDate = endDate;
+
+            await LoadDashboardKpis().ConfigureAwait(false);
+
+            await Task.Delay(3000);
+            await LoadSparklineCharts().ConfigureAwait(false);
+        }
+    }
+
+    async Task OnPresetClicked(RadzenSplitButtonItem item)
+    {
+        Console.WriteLine("OnPresetClicked");
+        if (item == null)
+        {
+            SetThisMonth();
+            return;
+        }
+
+        activeRangeMessage = "Please wait...";
+
+        previousStartDate = startDate;
+        previousEndDate = endDate;
+
+        //Console.WriteLine($"previousStartDate: {previousStartDate}");
+        //Console.WriteLine($"previousEndDate: {previousEndDate}");
+        //Console.WriteLine($"item.Value: {item.Value}");
+
+        switch (item.Value)
+        {
+            case "LastMonth":
+                var lastMonth = today.AddMonths(-1);
+                startDate = new DateTime(lastMonth.Year, lastMonth.Month, 1).ToLocalTime();
+                endDate = startDate.AddMonths(1).AddDays(-1);
+                break;
+
+            case "ThisYear":
+                startDate = new DateTime(today.Year, 1, 1).ToLocalTime();
+                endDate = new DateTime(today.Year, 12, 31).ToLocalTime();
+                break;
+
+            case "Custom":
+                var result = await DialogService.OpenAsync<CustomDateRangeDialog>("Custom Date Range",
+                    new Dictionary<string, object>() { },
+                    new DialogOptions() { Width = "400px", Height = "350px" });
+
+                if (result is ValueTuple<DateOnly, DateOnly> range)
+                {
+                    startDate = range.Item1.ToDateTime(TimeOnly.MinValue);
+                    endDate = range.Item2.ToDateTime(TimeOnly.MinValue);
+                    //Console.WriteLine($"range.Item1: {range.Item1}");
+                    //Console.WriteLine($"range.Item2: {range.Item2}");
+                }
+                break;
+
+            default:
+                //"ThisMonth":
+                SetThisMonth();
+                break;
+        }
+
+        //Console.WriteLine($"startDate: {startDate}");
+        //Console.WriteLine($"endDate: {endDate}");
+        await TryReloadDashboard().ConfigureAwait(false);
+    }
+
+    async Task ShowDrillDown(string kpi)
+    {
+        string title = "";
+        string prompt = "";
+        //Console.WriteLine($"ShowDrillDown: {kpi}");
+        IEnumerable<SparklineChartDto> ds = [];
+        switch (kpi)
+        {
+            case "total_revenue":
+                ds = totList;
+                title = "Total Revenue";
+                prompt = "Analyze the total revenue generated from all farm product sales during the selected period. Provide insights on revenue trends, seasonal variations, and any notable patterns.";
+                break;
+
+            case "cost_of_goods_sold":
+                ds = cogList;
+                title = "Cost of Goods Sold";
+                prompt = "Analyze the direct costs incurred to produce and deliver the farm products sold during the selected period. Provide insights on cost trends, efficiency, and any areas for potential savings.";
+                break;
+
+            case "gross_profit":
+                ds = gprList;
+                title = "Gross Profit";
+                prompt = "Analyze the gross profit, which is the difference between total revenue and cost of goods sold. Provide insights on profitability trends, cost management, and any areas for improvement.";
+                break;
+
+            case "net_profit":
+                ds = nprList;
+                title = "Net Profit";
+                prompt = "Analyze the net profit, which is the total earnings after all expenses have been deducted from total revenue. Provide insights on overall profitability, cost control, and financial health.";
+                break;
+
+            case "net_profit_margin":
+                ds = npmList;
+                title = "Net Profit Margin";
+                prompt = "Analyze the net profit margin, which is the percentage of revenue that remains as profit after all expenses are accounted for. Provide insights on profitability efficiency and areas for potential improvement.";
+                break;
+
+            case "operating_expenses":
+                ds = opxList;
+                title = "Operating Expenses";
+                prompt = "Analyze the operating expenses incurred during the selected period. Provide insights on cost management, efficiency, and any areas for potential savings.";
+                break;
+
+            case "operating_expense_ratio":
+                ds = oerList;
+                title = "Operating Expenses Ratio";
+                prompt = "Analyze the operating expenses ratio, which indicates the proportion of revenue consumed by operating expenses. Provide insights on cost efficiency and areas for potential improvement.";
+                break;
+
+            case "total_donated":
+                ds = donatedList;
+                title = "Total Donated (by qty)";
+                prompt = "Analyze the total value (in quantity) of farm goods donated to beneficiaries during the selected period. Provide insights on donation trends, beneficiary impact, and any notable patterns.";
+                break;
+
+            case "total_spoilage":
+                ds = spoilageList;
+                title = "Total Spoilage (by qty)";
+                prompt = "Analyze the estimated value (in quantity) lost due to spoilage during the selected period. Provide insights on spoilage trends, causes, and any areas for potential reduction.";
+                break;
+            default:
+                Console.WriteLine($"Unknown KPI: {kpi}");
+                return;
+        }
+
+        await DialogService.OpenAsync<PnlAnalysisDetailsDialog>("P&L Analysis Details",
+                    new Dictionary<string, object>
+                    {
+                        { "Datasource", ds },
+                        { "Title", title },
+                        { "Prompt", prompt }
+                    },
+                    new DialogOptions() { Width = "70vw", Height = "90vh" });
+    }
+}

@@ -1,0 +1,699 @@
+﻿@page "/pricing"
+@attribute [Authorize]
+@inject PricingService PricingService
+@inject PricingProfileService PricingProfileService
+@inject PricingConditionTypeService PricingConditionTypeService
+@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+@inject SystemSettingService SystemSettingService
+@inject FarmService FarmService
+@inject WebAppSettingService AppSettingService
+@inject IValidator<PricingProfileDto> Validator
+@inject IValidator<PricingDto> ValidatorDetail
+
+<PermissionView Permission="Farm.Full">
+    <ChildContent>
+        <PageTitle>Pricing Conditions</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/pricing" Text="Pricing Conditions" />
+        </RadzenBreadCrumb>
+        <RadzenRow>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" class="rz-my-8">
+                <RadzenText TextStyle="TextStyle.H5">Pricing Conditions</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@farmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(farmName))" />
+            </RadzenStack>
+        </RadzenRow>
+
+        <RadzenRow>
+            <RadzenColumn SizeMD="4">
+                <RadzenDataGrid @ref="pricingProfileGrid" AllowAlternatingRows="true" AllowFiltering="true" AllowSorting="false" EditMode="@editMode"
+                                Data="@pricingProfiles" TItem="PricingProfileDto" RowUpdate="@OnUpdateRowProfile" RowCreate="@OnCreateRowProfile" Sort="@ResetProfile"
+                                @bind-Value=@selectedObjList Page="@ResetProfile" Filter="@ResetProfile" ColumnWidth="200px"
+                                SelectionMode="DataGridSelectionMode.Single" RowSelect="@OnRowSelectProfile" class="umh-height-70vh">
+                    <EmptyTemplate>
+                        <p class="umh-no-records">No records to display.</p>
+                    </EmptyTemplate>
+                    <HeaderTemplate>
+                        <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="add" Text="Add Profile" Click="@InsertRowProfile" />
+                    </HeaderTemplate>
+                    <Columns>
+                        <RadzenDataGridColumn Context="profile" Filterable="false" Sortable="false" TextAlign="TextAlign.Right">
+                            <Template Context="profile">
+                                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowProfile(profile))" @onclick:stopPropagation="true" />
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowProfile(profile))" @onclick:stopPropagation="true" />
+                                <RadzenButton Icon="science" title="Test Pricing" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(() => TestPricing())" @onclick:stopPropagation="true" />
+                            </Template>
+                            <EditTemplate Context="profile">
+                                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowProfile(profile))" aria-label="Save" />
+                                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditProfile(profile))" aria-label="Cancel" />
+                                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowProfile(profile))" aria-label="Delete" />
+                            </EditTemplate>
+                        </RadzenDataGridColumn>
+                        <RadzenDataGridColumn Property="Name" Title="Profile" Width="400px">
+                            <EditTemplate Context="profile">
+                                <RadzenTemplateForm Data="@profile" EditContext="@GetEditContext(profile)">
+                                    <RadzenTextBox @bind-Value="profile.Name" class="rz-display-block" Name="Name" />
+                                    <ValidationMessage For="@(() => profile.Name)" />
+                                </RadzenTemplateForm>
+                            </EditTemplate>
+                        </RadzenDataGridColumn>
+                    </Columns>
+                </RadzenDataGrid>
+            </RadzenColumn>
+
+            <RadzenColumn SizeMD="8">
+                <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                    <RadzenStack Gap="1rem">
+                        <RadzenCard Variant="Variant.Text" class="rz-background-color-primary-lighter rz-color-on-primary-lighter">
+                            Profile: <b>@selectedObjList.FirstOrDefault()?.Name</b>
+                        </RadzenCard>
+                        <RadzenTabs>
+                            <Tabs>
+                                <RadzenTabsItem Text="Details">
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" class="rz-mb-2">
+                                        <RadzenIcon Icon="info" /><RadzenText TextStyle="TextStyle.Body2" class="umh-text-color-tertiary">Deduction conditions are sequenced first.</RadzenText>
+                                    </RadzenStack>
+                                    <RadzenDataGrid @ref="pricingGrid" AllowAlternatingRows="false" AllowFiltering="true" AllowSorting="false" EditMode="@editMode"
+                                                    Data="@selectedPricingDetails" TItem="PricingDto" RowUpdate="@OnUpdateRow" RowCreate="@OnCreateRow" Sort="@Reset"
+                                                    Page="@Reset" Filter="@Reset" ColumnWidth="200px">
+                                        <EmptyTemplate>
+                                            <p class="umh-no-records">No records to display.</p>
+                                        </EmptyTemplate>
+                                        <HeaderTemplate>
+                                            @if (selectedPricingDetails.Any())
+                                            {
+                                                <RadzenButton ButtonStyle="ButtonStyle.Base" Icon="add" Text="Add Condition" Click="@InsertRow" />
+                                            }
+                                        </HeaderTemplate>
+                                        <Columns>
+                                            <RadzenDataGridColumn Context="pricing" Filterable="false" Sortable="false" TextAlign="TextAlign.Right">
+                                                <Template Context="pricing">
+                                                    @* <RadzenButton Icon="add_circle" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" Click="@(() => InsertAfterRow(order))" title="Add new row after this row" Disabled="@(editMode == DataGridEditMode.Single && ordersToInsert.Count() > 0)" /> *@
+                                                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRow(pricing))" @onclick:stopPropagation="true" />
+                                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRow(pricing))" @onclick:stopPropagation="true" />
+                                                </Template>
+                                                <EditTemplate Context="pricing">
+                                                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRow(pricing))" aria-label="Save" />
+                                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEdit(pricing))" aria-label="Cancel" />
+                                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRow(pricing))" aria-label="Delete" />
+                                                </EditTemplate>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn Property="Sequence" Title="Sequence" Width="120px" Frozen="true" />
+                                            <RadzenDataGridColumn Property="ConditionType" Title="Condition Type" Width="300px">
+                                                <EditTemplate Context="pricing">
+                                                    <RadzenTemplateForm Data="@pricing" EditContext="@GetEditContextDetail(pricing)">
+                                                        <RadzenDropDown @bind-Value="pricing.ConditionTypeId" Data="@conditionTypes" TextProperty="@nameof(PricingConditionTypeDto.Name)" ValueProperty="@nameof(PricingConditionTypeDto.ConditionId)" class="umh-height-100 rz-display-block"
+                                                                        InputAttributes="@(new Dictionary<string, object>() { { "aria-label", "Select condition type" } })" />
+                                                        <ValidationMessage For="@(() => pricing.ConditionTypeId)" />
+                                                    </RadzenTemplateForm>
+                                                </EditTemplate>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn Title="Is Deduction">
+                                                <Template Context="pricing">
+                                                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@pricing.ConditionIsDeductionString" />
+                                                </Template>
+                                                <EditTemplate Context="pricing">
+                                                    <span></span>
+                                                </EditTemplate>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn Property="ApplyType" Title="Apply Type" Width="200px">
+                                                <EditTemplate Context="pricing">
+                                                    <RadzenTemplateForm Data="@pricing" EditContext="@GetEditContextDetail(pricing)">
+                                                        <RadzenDropDown @bind-Value="pricing.ApplyType" TextProperty="" ValueProperty="" Data="@applyTypes" class="umh-width-100 rz-display-block"
+                                                                        InputAttributes="@(new Dictionary<string, object>() { { "aria-label", "Select apply type" } })" />
+                                                        <ValidationMessage For="@(() => pricing.ApplyType)" />
+                                                    </RadzenTemplateForm>
+                                                </EditTemplate>
+                                            </RadzenDataGridColumn>
+                                            <RadzenDataGridColumn Property="Value" Title="Value">
+                                                <EditTemplate Context="pricing">
+                                                    <RadzenTemplateForm Data="@pricing" EditContext="@GetEditContextDetail(pricing)">
+                                                        <RadzenNumeric @bind-Value="pricing.Value" class="rz-display-block umh-width-150px" Name="Value" aria-label="Enter condition value" />
+                                                        <ValidationMessage For="@(() => pricing.Value)" />
+                                                    </RadzenTemplateForm>
+                                                </EditTemplate>
+                                            </RadzenDataGridColumn>
+                                        </Columns>
+                                    </RadzenDataGrid>
+                                </RadzenTabsItem>
+                            </Tabs>
+                        </RadzenTabs>
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    RadzenDataGrid<PricingDto> pricingGrid;
+    IEnumerable<PricingDto> pricingConditions;
+    IEnumerable<PricingConditionTypeDto> conditionTypes;
+    IEnumerable<string> applyTypes = new[] { "PERCENTAGE", "FIXED_AMOUNT" };
+
+    DataGridEditMode editMode = DataGridEditMode.Single;
+    List<PricingDto> pricingToInsert = new List<PricingDto>();
+    List<PricingDto> pricingToUpdate = new List<PricingDto>();
+
+    Guid farmId;
+    Guid profileId;
+    string farmName = "Loading...";
+    // decimal basePrice = 1;
+    // bool isCalculating = false;
+    // decimal finalPrice = 0;
+    // IList<PricingDto> breakdown = [];
+
+    RadzenDataGrid<PricingProfileDto> pricingProfileGrid;
+    IEnumerable<PricingProfileDto> pricingProfiles;
+    IList<PricingProfileDto> selectedObjList = new List<PricingProfileDto>();
+    IList<PricingDto> selectedPricingDetails = new List<PricingDto>();
+
+    List<PricingProfileDto> pricingProfileToInsert = new List<PricingProfileDto>();
+    List<PricingProfileDto> pricingProfileToUpdate = new List<PricingProfileDto>();
+
+    private bool hasLoadedSecondaryData = false;
+    private static TaskCompletionSource<Guid> _farmIdTcs = new();
+
+    Dictionary<PricingProfileDto, EditContext> editContexts = new();
+    Dictionary<PricingDto, EditContext> editContextsDetail = new();
+    Dictionary<EditContext, ValidationMessageStore> stores = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+
+            _ = Task.Run(async () =>
+            {
+                await LoadPricingProfiles().ConfigureAwait(false);
+                await LoadConditionTypes().ConfigureAwait(false);
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+
+            // _ = Task.Run(async () =>
+            // {
+            //     // Wait for farmId to be resolved (polling + timeout)
+            //     var maxWaitMs = 3000;
+            //     var intervalMs = 50;
+            //     var waitedMs = 0;
+
+            //     while (farmId == Guid.Empty && waitedMs < maxWaitMs)
+            //     {
+            //         await Task.Delay(intervalMs);
+            //         waitedMs += intervalMs;
+            //     }
+
+            //     if (farmId == Guid.Empty)
+            //     {
+            //         Console.WriteLine("Farm ID is still empty after waiting. Skipping dependent API calls.");
+            //         return;
+            //     }
+
+            //     await LoadPricingProfiles().ConfigureAwait(false);
+            //     await LoadConditionTypes().ConfigureAwait(false);
+
+            //     await InvokeAsync(StateHasChanged); // UI update
+            // });
+
+            // farmId = await _farmIdTcs.Task; // await until it's available
+
+            // await LoadPricingProfiles().ConfigureAwait(false);
+            // await LoadConditionTypes().ConfigureAwait(false);
+
+            // await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        // farmId = Settings.FarmId;
+        // farmName = Settings.FarmName ?? "Loading...";
+
+        // if (farmId == Guid.Empty)
+        // {
+        //     Console.WriteLine("Settings.FarmId is empty. Attempting to load system settings.");
+
+        //     await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+
+        //     farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
+
+        //     if (farmId == Guid.Empty)
+        //     {
+        //         Console.WriteLine("SystemSettingService.GetSetting<Guid> returned an empty GUID.");
+        //     }
+        //     else
+        //     {
+        //         Console.WriteLine($"Loaded farmId from system settings: {farmId}");
+        //     }
+        // }
+
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Settings.FarmId;
+        farmName = Settings.FarmName ?? "Loading...";
+
+        // if (farmId == Guid.Empty)
+        // {
+        //     await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+        //     farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
+        // }
+
+        // if (!_farmIdTcs.Task.IsCompleted)
+        //     _farmIdTcs.SetResult(farmId);
+    }
+
+    async Task LoadPricingProfiles()
+    {
+        var response = await PricingProfileService.GetPricingProfilesByFarmIdAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            pricingProfiles = response.Data;
+            var obj = pricingProfiles.FirstOrDefault();
+            if (obj == null)
+                obj = new PricingProfileDto();
+
+            profileId = obj.ProfileId;
+            selectedObjList = new List<PricingProfileDto>() { obj };
+            selectedPricingDetails = obj.PricingConditions.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadPricingConditions()
+    {
+        var response = await PricingService.GetPricingsByFarmIdAsync(farmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            pricingConditions = response.Data;
+
+            // basePrice = 1;
+            // finalPrice = 0;
+            // isCalculating = false;
+            // breakdown = [];
+
+            StateHasChanged();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadConditionTypes()
+    {
+        var response = await PricingConditionTypeService.GetPricingConditionTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            conditionTypes = response.Data;
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void Reset()
+    {
+        pricingToInsert.Clear();
+        pricingToUpdate.Clear();
+    }
+
+    void Reset(PricingDto pricing)
+    {
+        pricingToInsert.Remove(pricing);
+        pricingToUpdate.Remove(pricing);
+    }
+
+    async Task EditRow(PricingDto pricing)
+    {
+        if (!pricingGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            Reset();
+        }
+
+        pricing.ProfileId = profileId;
+        pricingToUpdate.Add(pricing);
+        await pricingGrid.EditRow(pricing);
+    }
+
+    async Task OnUpdateRow(PricingDto pricing)
+    {
+        if (!ValidateRowDetail(pricing))
+            return;
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        Reset(pricing);
+
+        pricing.ProfileId = profileId;
+        await PricingService.UpdatePricingAsync(pricing).ConfigureAwait(false);
+
+        DialogService.Close(true);
+    }
+
+    async Task SaveRow(PricingDto pricing)
+    {
+        if (!ValidateRowDetail(pricing))
+            return;
+
+        pricing.ProfileId = profileId;
+        await pricingGrid.UpdateRow(pricing);
+    }
+
+    void CancelEdit(PricingDto pricing)
+    {
+        Reset(pricing);
+
+        pricing.ProfileId = profileId;
+        pricingGrid.CancelEditRow(pricing);
+    }
+
+    async Task DeleteRow(PricingDto pricing)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove {pricing.ConditionType}?",
+                "Confirm Remove",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var task = DialogService.OpenAsync("", ds =>@<BusyDialog />               ,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            Reset(pricing);
+
+            if (pricingConditions.Contains(pricing))
+            {
+                pricing.ProfileId = profileId;
+                await PricingService.DeletePricingAsync(pricing.PricingId).ConfigureAwait(false);
+                await LoadPricingProfiles().ConfigureAwait(false);
+                await pricingGrid.Reload();
+            }
+            else
+            {
+                pricingGrid.CancelEditRow(pricing);
+                await pricingGrid.Reload();
+            }
+
+            DialogService.Close(true);
+        }
+    }
+
+    async Task InsertRow()
+    {
+        if (!pricingGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            Reset();
+        }
+
+        var pricing = new PricingDto();
+        pricing.ProfileId = profileId;
+        pricingToInsert.Add(pricing);
+        await pricingGrid.InsertRow(pricing);
+    }
+
+    async Task InsertAfterRow(PricingDto row)
+    {
+        if (!pricingGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            Reset();
+        }
+
+        var pricing = new PricingDto();
+        pricing.ProfileId = profileId;
+        pricingToInsert.Add(pricing);
+        await pricingGrid.InsertAfterRow(pricing, row);
+    }
+
+    async Task OnCreateRow(PricingDto pricing)
+    {
+        if (!ValidateRowDetail(pricing))
+            return;
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        pricing.ProfileId = profileId;
+        var newObj = await PricingService.CreatePricingAsync(pricing).ConfigureAwait(false);
+
+        await LoadPricingProfiles().ConfigureAwait(false);
+
+        pricingToInsert.Remove(pricing);
+
+        DialogService.Close(true);
+    }
+
+    #region PROFILE
+    void ResetProfile()
+    {
+        pricingProfileToInsert.Clear();
+        pricingProfileToUpdate.Clear();
+    }
+
+    void ResetProfile(PricingProfileDto profile)
+    {
+        pricingProfileToInsert.Remove(profile);
+        pricingProfileToUpdate.Remove(profile);
+    }
+
+    async Task EditRowProfile(PricingProfileDto profile)
+    {
+        if (!pricingProfileGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            ResetProfile();
+        }
+
+        profile.FarmId = farmId;
+        pricingProfileToUpdate.Add(profile);
+        await pricingProfileGrid.EditRow(profile);
+    }
+
+    async Task OnUpdateRowProfile(PricingProfileDto profile)
+    {
+        if (!ValidateRow(profile))
+            return;
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        ResetProfile(profile);
+
+        profile.FarmId = farmId;
+        await PricingProfileService.UpdatePricingProfileAsync(profile).ConfigureAwait(false);
+
+        DialogService.Close(true);
+    }
+
+    async Task SaveRowProfile(PricingProfileDto profile)
+    {
+        if (!ValidateRow(profile))
+            return;
+
+        profile.FarmId = farmId;
+        await pricingProfileGrid.UpdateRow(profile);
+    }
+
+    void CancelEditProfile(PricingProfileDto profile)
+    {
+        ResetProfile(profile);
+
+        profile.FarmId = farmId;
+        pricingProfileGrid.CancelEditRow(profile);
+    }
+
+    async Task DeleteRowProfile(PricingProfileDto profile)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove {profile.Name}?",
+                "Confirm Remove",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var task = DialogService.OpenAsync("", ds =>@<BusyDialog />               ,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            ResetProfile(profile);
+
+            if (pricingProfiles.Contains(profile))
+            {
+                profile.FarmId = farmId;
+                await PricingService.DeletePricingAsync(profile.ProfileId).ConfigureAwait(false);
+                await LoadPricingProfiles().ConfigureAwait(false);
+                await pricingProfileGrid.Reload();
+            }
+            else
+            {
+                pricingProfileGrid.CancelEditRow(profile);
+                await pricingProfileGrid.Reload();
+            }
+
+            DialogService.Close(true);
+        }
+    }
+
+    async Task InsertRowProfile()
+    {
+        if (!pricingProfileGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            ResetProfile();
+        }
+
+        var profile = new PricingProfileDto();
+        profile.FarmId = farmId;
+        pricingProfileToInsert.Add(profile);
+        await pricingProfileGrid.InsertRow(profile);
+    }
+
+    async Task InsertAfterRowProfile(PricingProfileDto row)
+    {
+        if (!pricingProfileGrid.IsValid) return;
+
+        if (editMode == DataGridEditMode.Single)
+        {
+            ResetProfile();
+        }
+
+        var profile = new PricingProfileDto();
+        profile.FarmId = farmId;
+        pricingProfileToInsert.Add(profile);
+        await pricingProfileGrid.InsertAfterRow(profile, row);
+    }
+
+    async Task OnCreateRowProfile(PricingProfileDto profile)
+    {
+        if (!ValidateRow(profile))
+            return;
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        profile.FarmId = farmId;
+        await PricingProfileService.CreatePricingProfileAsync(profile).ConfigureAwait(false);
+        pricingProfileToInsert.Remove(profile);
+
+        DialogService.Close(true);
+    }
+
+    async Task OnRowSelectProfile(PricingProfileDto profile)
+    {
+        profileId = profile.ProfileId;
+        selectedPricingDetails = profile.PricingConditions.ToList();
+    }
+    #endregion
+
+    async Task TestPricing()
+    {
+        if (profileId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Please select a pricing profile first.");
+            return;
+        }
+        // open TestPricingDialog
+        await DialogService.OpenAsync<TestPricingDialog>("Test Pricing",
+                    new Dictionary<string, object> {
+                        { "ProfileId", profileId },
+                        { "FarmId", farmId },
+                    },
+                    new DialogOptions()
+                    {
+                        Width = "50vw",
+                        Height = "80vh",
+                    });
+    }
+
+    private EditContext GetEditContext(PricingProfileDto profile)
+    {
+        if (!editContexts.TryGetValue(profile, out var context))
+        {
+            context = new EditContext(profile);
+            editContexts[profile] = context;
+        }
+        return context;
+    }
+
+    private EditContext GetEditContextDetail(PricingDto pricing)
+    {
+        if (!editContextsDetail.TryGetValue(pricing, out var context))
+        {
+            context = new EditContext(pricing);
+            editContextsDetail[pricing] = context;
+        }
+        return context;
+    }
+
+    bool ValidateRow(PricingProfileDto product)
+    {
+        var editContext = GetEditContext(product);
+
+        if (!stores.TryGetValue(editContext, out var store))
+        {
+            store = new ValidationMessageStore(editContext);
+            stores[editContext] = store;
+        }
+        store.Clear();
+
+        var result = Validator.Validate(product);
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                store.Add(editContext.Field(error.PropertyName), error.ErrorMessage);
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    bool ValidateRowDetail(PricingDto pricing)
+    {
+        var editContext = GetEditContextDetail(pricing);
+
+        if (!stores.TryGetValue(editContext, out var store))
+        {
+            store = new ValidationMessageStore(editContext);
+            stores[editContext] = store;
+        }
+        store.Clear();
+
+        var result = ValidatorDetail.Validate(pricing);
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                store.Add(editContext.Field(error.PropertyName), error.ErrorMessage);
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return false;
+        }
+
+        return true;
+    }
+}

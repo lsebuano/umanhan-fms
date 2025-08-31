@@ -1,0 +1,148 @@
+﻿@inject DialogService DialogService
+@inject UserService UserService
+@inject RoleService RoleService
+@inject AppNotificationService NotificationService
+@inject IJSRuntime JSRuntime
+@* @inject IValidator<UserDto> Validator *@
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-50">
+    <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+        @*         <RadzenTemplateForm TItem="UserDto" Submit="@SaveChanges"> *@
+        <RadzenStack>
+            @* <FluentValidationValidator Validator="@Validator" /> *@
+
+            <RadzenFormField Text="Role" Variant="Variant.Text">
+                <RadzenDropDown @bind-Value=@values Data=@roles TextProperty="@nameof(RoleDto.GroupName)" ValueProperty="@nameof(RoleDto.GroupName)" Name="DropDownGroupName"
+                                Multiple=true AllowClear=true Placeholder="Select roles" Chips=true />
+            </RadzenFormField>
+        </RadzenStack>
+        @*         </RadzenTemplateForm> *@
+    </RadzenColumn>
+</RadzenStack>
+
+<RadzenFooter>
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+        <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+        <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Disabled="isSaving" Click="SaveChanges" />
+    </RadzenStack>
+</RadzenFooter>
+
+@code {
+    [Parameter] public string ObjId { get; set; } //<--username
+    [Parameter] public IEnumerable<string> CurrentRoles { get; set; }
+    // private string mode = "Add";
+    // private UserDto obj;
+    private string title = "Message";
+    private string message;
+    // private EditContext editContext;
+    private bool isSaving;
+    private IEnumerable<RoleDto> roles;
+    private IList<string> values = new string[] { };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", "OnInitializedAsync...");
+        // if (obj == null)
+        // {
+        //     obj = new UserDto();
+        // }
+        // initialize the context
+        // editContext = new EditContext(obj);
+
+        await LoadRoles().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", "OnParametersSetAsync...");
+
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        // await LoadObj().ConfigureAwait(false);
+        // update the context
+        // editContext = new EditContext(obj);
+        await JSRuntime.InvokeVoidAsync("console.log", "...OnParametersSetAsync");
+    }
+
+    private async Task LoadRoles()
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", "LoadRoles...");
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        var response = await RoleService.GetAllCognitoGroupsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            roles = response.Data;
+            values = roles.Where(x => CurrentRoles.Contains(x.GroupName))
+                  .Select(x => x.GroupName)
+                  .OrderBy(x => x)
+                  .Distinct()
+                  .ToArray();
+
+            StateHasChanged();
+            await JSRuntime.InvokeVoidAsync("console.log", "...LoadRoles");
+        }
+        else
+        {
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        DialogService.Close(true);
+    }
+
+    private async Task SaveChanges()
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", "SaveChanges...");
+
+        if (isSaving) return;
+
+        isSaving = true;
+
+        // if (!editContext.Validate())
+        // {
+        //     isSaving = true;
+        //     Console.WriteLine("Form validation failed!");
+        //     return;
+        // }
+
+        if (values.Count == 0)
+        {
+            isSaving = false;
+            message = "Please select at least one role.";
+            await DialogService.Alert($"Error: {message}", "Error");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            var response = await UserService.AddUserToRolesAsync(ObjId, values).ConfigureAwait(false);
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+        await JSRuntime.InvokeVoidAsync("console.log", "...SaveChanges");
+    }
+}

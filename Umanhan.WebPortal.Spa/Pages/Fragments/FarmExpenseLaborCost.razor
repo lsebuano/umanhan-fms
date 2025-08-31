@@ -1,0 +1,297 @@
+﻿@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+@inject FarmActivityLaborerService FarmActivityLaborerService
+@inject PaymentTypeService PaymentTypeService
+@inject LaborerService LaborerService
+
+<RadzenDataGrid @ref="costGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true"
+PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+Data="@laborCosts" ColumnWidth="160px" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+@bind-Value=@selectedCosts class="rz-mt-5" EditMode="DataGridEditMode.Single" TItem="FarmActivityLaborerDto" RowUpdate="@OnUpdateRowGrid1"
+RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1" Filter="@ResetGrid1">
+    <HeaderTemplate>
+        <RadzenButton ButtonStyle="ButtonStyle.Base" Icon="add" Text="Add Costs" Click="@InsertRowGrid1" />
+    </HeaderTemplate>
+    <Columns>
+        <RadzenDataGridColumn Context="expense" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right" Width="160px">
+            <Template Context="expense">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowGrid1(expense))" @onclick:stopPropagation="true" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(expense))" @onclick:stopPropagation="true" />
+            </Template>
+            <EditTemplate Context="expense">
+                <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowGrid1(expense))" aria-label="Save" />
+                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditGrid1(expense))" aria-label="Cancel" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(expense))" aria-label="Delete" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityLaborerDto.LaborName)" Title="Labor" Width="250px">
+            <Template Context="expense">
+                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@expense.LaborName" class="umh-padding-10px" />
+            </Template>
+            <EditTemplate Context="expense">
+                <RadzenDropDown @bind-Value="expense.LaborerId" Data="@labors" Placeholder="Select labor"
+                                TextProperty="Name" ValueProperty="LaborerId" Name="LaborerId" class="umh-width-100 rz-display-block" Change="@(async (args) => await OnLaborChange(args, expense))" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityLaborerDto.PaymentType)" Title="Payment Type" Width="180px">
+            <Template Context="expense">
+                <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@expense.PaymentType" class="umh-padding-10px" />
+            </Template>
+            <EditTemplate Context="expense">
+                <RadzenDropDown @bind-Value="expense.PaymentTypeId" Data="@paymentTypes" Placeholder="Select payment type"
+                                TextProperty="PaymentTypeName" ValueProperty="PaymentTypeId" Name="PaymentTypeId" class="umh-width-100 rz-display-block" Change="@(args => OnPaymentTypeChanged((Guid)args, expense))" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityLaborerDto.Rate)" Title="Rate" TextAlign="TextAlign.Right" Width="150px">
+            <EditTemplate Context="expense">
+                <RadzenNumeric @bind-Value="expense.Rate" Min="0" Max="10000" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityLaborerDto.QuantityWorked)" Title="Quantity Worked" TextAlign="TextAlign.Right" Width="180px">
+            <EditTemplate Context="expense">
+                <RadzenNumeric @bind-Value="expense.QuantityWorked" Min="0" Max="100000" />
+            </EditTemplate>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn Property="@nameof(FarmActivityLaborerDto.TotalPayment)" Title="Total Payment" TextAlign="TextAlign.Right" Width="200px">
+            <EditTemplate Context="expense">
+                <RadzenButton ButtonStyle="ButtonStyle.Base" Icon="equal" Size="ButtonSize.Small" Click="@(()=>{expense.Recompute(); StateHasChanged();})" title="Compute" />
+                <RadzenBadge Shade="Shade.Lighter" BadgeStyle="BadgeStyle.Primary" Text="@expense.TotalPayment.ToString("n2")" class="umh-p-10px-ml-10px" />
+            </EditTemplate>
+            <FooterTemplate>
+                Total Amount: <b>@String.Format(new System.Globalization.CultureInfo("en-US"), "{0:n2}", laborCosts.Sum(o => o.TotalPayment))</b>
+            </FooterTemplate>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    [Parameter]
+    public FarmActivityDto Model { get; set; }
+
+    private IList<FarmActivityLaborerDto> selectedCosts = [];
+    private IEnumerable<FarmActivityLaborerDto> laborCosts = [];
+    private IEnumerable<LaborerDto> labors = [];
+    private IEnumerable<PaymentTypeDto> paymentTypes = [];
+
+    RadzenDataGrid<FarmActivityLaborerDto> costGrid;
+
+    List<FarmActivityLaborerDto> costToInsert = [];
+    List<FarmActivityLaborerDto> costToUpdate = [];
+
+    string currentPaymentType = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLaborCosts().ConfigureAwait(false);
+
+        await LoadLaborers().ConfigureAwait(false);
+        await LoadPaymentTypes().ConfigureAwait(false);
+    }
+
+    async Task LoadLaborers()
+    {
+        var response = await LaborerService.GetAllLaborersAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            labors = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadPaymentTypes()
+    {
+        var response = await PaymentTypeService.GetAllPaymentTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            paymentTypes = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadLaborCosts()
+    {
+        var response = await FarmActivityLaborerService.GetFarmActivityLaborerByActivityAsync(Model.ActivityId).ConfigureAwait(false);
+        if (response.IsSuccess)
+            laborCosts = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void OnPaymentTypeChanged(Guid newTypeId, FarmActivityLaborerDto expense)
+    {
+        expense.PaymentTypeId = newTypeId;
+
+        var pt = paymentTypes.FirstOrDefault(p => p.PaymentTypeId == newTypeId);
+        expense.PaymentType = pt?.PaymentTypeName ?? string.Empty;
+
+        expense.Recompute();
+
+        StateHasChanged();
+    }
+
+    async Task OnLaborChange(object value, FarmActivityLaborerDto cost)
+    {
+        //Console.WriteLine($"OnLaborChange");
+        //Console.WriteLine($"{value}");
+        var id = (Guid)value;
+        //Console.WriteLine($"{id.ToString()}");
+
+        var labObj = labors.FirstOrDefault(x => x.LaborerId == id);
+        if (labObj is not null)
+        {
+            //Console.WriteLine($"labObj is not null");
+
+            cost.LaborerId = id;
+            cost.Rate = labObj.DailyRate ?? 0;
+            cost.Recompute();
+            StateHasChanged();
+        }
+    }
+
+    void ResetGrid1()
+    {
+        costToInsert.Clear();
+        costToUpdate.Clear();
+    }
+
+    void ResetGrid1(FarmActivityLaborerDto cost)
+    {
+        costToInsert.Remove(cost);
+        costToUpdate.Remove(cost);
+    }
+
+    async Task EditRowGrid1(FarmActivityLaborerDto cost)
+    {
+        if (!costGrid.IsValid) return;
+
+        costToUpdate.Add(cost);
+        await costGrid.EditRow(cost);
+    }
+
+    async Task OnUpdateRowGrid1(FarmActivityLaborerDto cost)
+    {
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        ResetGrid1(cost);
+
+        // update total
+        //cost.Recompute();
+
+        var obj = await FarmActivityLaborerService.UpdateFarmActivityLaborAsync(cost).ConfigureAwait(false);
+        if (obj is not null)
+        {
+            await costGrid.Reload();
+            await LoadLaborCosts().ConfigureAwait(false);
+            await NotificationService.ShowSuccess("Labor cost successfully updated.");
+        }
+        else
+            await NotificationService.ShowError("Unable to update cost.");
+
+        DialogService.Close(null);
+    }
+
+    async Task SaveRowGrid1(FarmActivityLaborerDto cost)
+    {
+        var j = JsonSerializer.Serialize(cost);
+        //Console.WriteLine($"{j}");
+
+        await costGrid.UpdateRow(cost);
+    }
+
+    void CancelEditGrid1(FarmActivityLaborerDto cost)
+    {
+        ResetGrid1(cost);
+
+        costGrid.CancelEditRow(cost);
+    }
+
+    async Task DeleteRowGrid1(FarmActivityLaborerDto cost)
+    {
+        ResetGrid1(cost);
+
+        if (laborCosts.Contains(cost))
+        {
+            var confirm = await DialogService.Confirm(
+                $"Are you sure you want to delete '{cost.LaborName} ({cost.TotalPayment.ToString("n2")})'?",
+                "Confirm Delete",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+            if (confirm == true)
+            {
+                var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+                    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+                var obj = await FarmActivityLaborerService.DeleteFarmActivityLaborAsync(cost.LaborActivityId).ConfigureAwait(false);
+                if (obj is not null)
+                {
+                    await costGrid.Reload();
+                    await LoadLaborCosts().ConfigureAwait(false);
+                    await NotificationService.ShowSuccess("Labor cost successfully deleted.");
+                }
+                else
+                    await NotificationService.ShowError("Unable to delete cost.");
+
+                DialogService.Close(null);
+            }
+        }
+        else
+        {
+            costGrid.CancelEditRow(cost);
+            await costGrid.Reload();
+        }
+    }
+
+    async Task InsertRowGrid1()
+    {
+        if (!costGrid.IsValid) return;
+
+        var cost = new FarmActivityLaborerDto();
+        cost.ActivityId = Model.ActivityId;
+        cost.PaymentType = currentPaymentType;
+        costToInsert.Add(cost);
+
+        await costGrid.InsertRow(cost);
+    }
+
+    async Task InsertAfterRowGrid1(FarmActivityLaborerDto row)
+    {
+        if (!costGrid.IsValid) return;
+
+        var cost = new FarmActivityLaborerDto();
+        cost.ActivityId = Model.ActivityId;
+        costToInsert.Add(cost);
+
+        await costGrid.InsertAfterRow(cost, row);
+    }
+
+    async Task OnCreateRowGrid1(FarmActivityLaborerDto cost)
+    {
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            cost.ActivityId = Model.ActivityId;
+            var obj = await FarmActivityLaborerService.CreateFarmActivityLaborAsync(cost).ConfigureAwait(false);
+            if (obj is not null)
+            {
+                costToInsert.Remove(cost);
+                await LoadLaborCosts().ConfigureAwait(false);
+                await NotificationService.ShowSuccess("New cost successfully created.");
+            }
+            else
+                await NotificationService.ShowError("Unable to create new cost.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"{ex.Message}");
+            Console.WriteLine($"{ex.InnerException?.Message}");
+        }
+        DialogService.Close(null);
+    }
+}

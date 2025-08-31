@@ -1,0 +1,24 @@
+﻿@page "/farm-funds"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<PermissionView Permission="Finance.Full">
+    <ChildContent>
+        <PageTitle>Funds</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/farm-funds" Text="Funds" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Funds</RadzenText>
+
+
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+
+}

@@ -1,0 +1,46 @@
+﻿@using Umanhan.WebPortal.Spa.Services.Interfaces
+@inject IPermissionService PermissionService
+
+@if (isLoading)
+{
+    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="umh-height-80vh">
+        <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" Value="100" ShowValue="false" />
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H6">Please wait...</RadzenText>
+    </RadzenStack>
+}
+else if (isAuthorized)
+{
+    @ChildContent
+}
+else
+{
+    @NotAuthorized
+}
+
+@code {
+    [Parameter] public string Permission { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment NotAuthorized { get; set; }
+
+    private bool isAuthorized;
+    private bool isLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            isAuthorized = await PermissionService.HasPermissionAsync(Permission);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Permission check failed: {ex.Message}");
+            isAuthorized = false;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+}

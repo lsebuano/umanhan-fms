@@ -1,0 +1,130 @@
+﻿@page "/"
+@attribute [Authorize]
+@inject WebAppSettingService AppSettingService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Welcome to umanhan FMS</PageTitle>
+
+@if (!Settings.IsLoaded)
+{
+    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="umh-height-80vh">
+        <RadzenProgressBarCircular Mode="ProgressBarMode.Indeterminate" Value="100" ShowValue="false" />
+        <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H6">Please wait...</RadzenText>
+    </RadzenStack>
+}
+else if (Convert.ToBoolean(Settings.IsFarmSetupComplete))
+{
+    <Dashboard DashboardType="dashboardType" />
+}
+else
+{
+    <SetupFarm />
+}
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    //private bool isFarmSetupComplete = false;
+    //private bool isFarmSetupStarted = false;
+    //private Guid farmId;
+    //private string farmName = "Loading...";
+
+    private string componentName = "DefaultDashboard"; // Default dashboard component name
+    private Type dashboardType;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($"IsLoaded: {Settings.IsLoaded}, IsFarmSetupComplete: {Settings.IsFarmSetupComplete}");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        Console.WriteLine($"Home:OnAfterRenderAsync:firstRender: {firstRender}");
+        if (firstRender)
+        {
+            Console.WriteLine($"Home:OnAfterRenderAsync:firstRender: {firstRender} abc");
+            await LoadComponent().ConfigureAwait(false);
+            LoadDashboard();
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        //Console.WriteLine("Home:LoadSettings:Settings loaded successfully.");
+        //Console.WriteLine($"Home:LoadSettings:Settings");
+        //Console.WriteLine(JsonSerializer.Serialize(Settings));
+
+        //farmId = Settings.FarmId;
+        //farmName = Settings.FarmName ?? "Loading...";
+        //isFarmSetupComplete = Convert.ToBoolean(Settings.IsFarmSetupComplete ?? "false");
+        //isFarmSetupStarted = Convert.ToBoolean(Settings.IsFarmSetupStarted ?? "false");
+
+        //StateHasChanged();
+
+        // if (farmId == Guid.Empty)
+        // {
+        //     await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+        //     farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
+
+        //     var response = await FarmService.GetFarmByIdAsync(farmId).ConfigureAwait(false);
+        //     if (response.IsSuccess)
+        //     {
+        //         var farmObj = response.Data;
+        //         isFarmSetupComplete = farmObj.SetupComplete;
+        //         isFarmSetupStarted = farmObj.SetupStarted;
+        //         farmName = farmObj.FarmName;
+        //         // set global settings
+        //         Settings.IsFarmSetupComplete = isFarmSetupComplete;
+        //         Settings.IsFarmSetupStarted = isFarmSetupStarted;
+        //         Settings.FarmId = farmId;
+        //         Settings.FarmName = farmName;
+
+        //         StateHasChanged();
+
+        //         await SystemSettingService.SetSetting(SettingName.FARM_SETUP_COMPLETE.ToString(), isFarmSetupComplete.ToString());
+        //     }
+        //     else
+        //         await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        // }
+
+        Console.WriteLine($"Home:LoadSettings:Settings.IsLoaded: {Settings.IsLoaded}");
+    }
+
+    async Task LoadComponent()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync().ConfigureAwait(false);
+        var user = authState.User;
+        Console.WriteLine("User: ", user.Identity?.Name);
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var x = user.FindFirst("dashboard_component")?.Value;
+            componentName = x ?? "DefaultDashboard";
+            Console.WriteLine("x: ", x);
+            Console.WriteLine("componentName: ", componentName);
+        }
+        Console.WriteLine("dashboard_component: ", componentName);
+    }
+
+    void LoadDashboard()
+    {
+        var componentFullName = $"Umanhan.WebPortal.Spa.Pages.Fragments.{componentName}";
+        var assemblyTypes = AppDomain.CurrentDomain.GetAssemblies()
+            .SelectMany(a => a.GetTypes());
+// #if DEBUG
+//         foreach (var item in assemblyTypes)
+//         {
+//             Console.WriteLine($"AppDomain.CurrentDomain.Assembly: {item.FullName}");
+//         }
+// #endif
+        dashboardType = assemblyTypes.FirstOrDefault(t => t.FullName == componentFullName &&
+                                 typeof(IComponent).IsAssignableFrom(t));
+        StateHasChanged();
+    }
+}

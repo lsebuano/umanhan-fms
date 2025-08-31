@@ -1,0 +1,189 @@
+﻿@inject DialogService DialogService
+@inject CropService CropService
+@inject AppNotificationService NotificationService
+@inject IValidator<CropDto> Validator
+@inject UnitService UnitService
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100" >
+    <RadzenStack>
+        <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+            <RadzenTemplateForm TItem="CropDto" Data="@obj" Submit="@SaveChanges">
+                <RadzenStack>
+                    <FluentValidationValidator Validator="@Validator" />
+
+                    <RadzenFormField Text="Crop" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.CropName" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.CropName)" />
+
+                    <RadzenFormField Text="Variety" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.CropVariety" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.CropVariety)" />
+
+                    <RadzenFormField Text="Unit (Default)" Variant="Variant.Text">
+                        <RadzenDropDown @ref=@radzenDropDown @bind-SearchText=SearchText FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        FilterOperator="StringFilterOperator.StartsWith" AllowFiltering="true"
+                                        Data=@units TextProperty="@nameof(UnitDto.UnitName)" ValueProperty="@nameof(UnitDto.UnitId)"
+                                        AllowClear="true" @bind-Value="obj.DefaultUnitId" Name="DefaultUnitId" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.DefaultUnitId)" />
+
+                    <RadzenFormField Text="Rate per Unit (Default)" Variant="Variant.Text">
+                        <RadzenNumeric @bind-Value="obj.DefaultRatePerUnit" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.DefaultRatePerUnit)" />
+
+                    <RadzenFormField Text="Notes" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.Notes" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Notes)" />
+                </RadzenStack>
+
+                <RadzenFooter>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                        <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                        <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                    </RadzenStack>
+                </RadzenFooter>
+            </RadzenTemplateForm>
+        </RadzenColumn>
+    </RadzenStack>
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => DialogService.Close(true))" Variant="Variant.Flat" Text="Close" class="umh-width-120px" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+    private string mode = "Add";
+    private CropDto obj;
+    private string title = "Message";
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    RadzenDropDown<Guid> radzenDropDown;
+    private string searchText;
+    private IEnumerable<UnitDto> units;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (obj == null)
+        {
+            obj = new CropDto();
+        }
+        await LoadObj().ConfigureAwait(false);
+        // initialize the context
+        editContext = new EditContext(obj);
+        await LoadUnits().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        //await LoadObj().ConfigureAwait(false);
+        // update the context
+        editContext = new EditContext(obj);
+    }
+
+    private async Task LoadObj()
+    {
+        if (!ObjId.Equals(Guid.Empty))
+        {
+            mode = "Edit";
+            var response = await CropService.GetCropByIdAsync(ObjId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            mode = "Add";
+            obj = new CropDto();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            CropDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await CropService.CreateCropAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await CropService.UpdateCropAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+
+    public string SearchText
+    {
+        get
+        {
+            return searchText;
+        }
+        set
+        {
+            if (searchText != value)
+            {
+                searchText = value;
+                // searchTextStatus = $"Search text: {searchText}";
+                //Console.WriteLine($"Search text: {radzenDropDown.SearchText}");
+            }
+        }
+    }
+
+    private async Task LoadUnits()
+    {
+        var response = await UnitService.GetAllUnitsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            units = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+}

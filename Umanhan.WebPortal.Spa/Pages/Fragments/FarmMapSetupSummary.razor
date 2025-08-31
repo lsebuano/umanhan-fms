@@ -1,0 +1,110 @@
+﻿@attribute [Authorize]
+@inject FarmService FarmService
+@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+@inject NavigationManager NavigationManager
+@inject WebAppSetting Settings
+
+<RadzenRow>
+    <RadzenColumn Size="12">
+        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">FarmName</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" class=""><b>@Model.FarmName</b></RadzenText>
+
+        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">Location</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" class=""><b>@Model.FarmLocation</b></RadzenText>
+
+        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">Owner</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" class=""><b>@Model.OwnerName</b></RadzenText>
+
+        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">TIN</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" class=""><b>@Model.Tin</b></RadzenText>
+
+        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">Contact Number</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" class=""><b>@Model.ContactPhone</b></RadzenText>
+
+        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">Email</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" class=""><b>@Model.ContactEmail</b></RadzenText>
+
+        <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">Size (Hectares)</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" class=""><b>@Model.FarmSizeHA.ToString("n1")</b></RadzenText>
+
+        <RadzenStack Orientation="Orientation.Horizontal">
+            @foreach (var zone in Model.FarmZones)
+            {
+                string cropName = "";
+                var crop = Model.FarmCrops.FirstOrDefault(x => x.ZoneId.Equals(zone.ZoneId));
+                cropName = crop is not null
+                ? $"{crop.CropName}{(string.IsNullOrEmpty(crop.CropVariety) ? "" : $" ({crop.CropVariety})")}"
+                : cropName;
+
+                <RadzenCard Variant="Variant.Outlined" class="rz-background-color-primary-lighter rz-shadow-0 rz-border-radius-0 rz-p-8 umh-max-width-420px">
+                    <RadzenText TextStyle="TextStyle.H6" class=""><b>@zone.ZoneName</b></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" class="">@cropName</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" class="">@zone.Description</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" class="">@(zone.SizeInHectares?.ToString("n1") ?? "0.0") hectares</RadzenText>
+                </RadzenCard>
+            }
+        </RadzenStack>
+
+    </RadzenColumn>
+</RadzenRow>
+<RadzenRow class="rz-mt-12">
+
+    <RadzenButton Click="CompleteSetup" Icon="check">Complete Setup</RadzenButton>
+</RadzenRow>
+
+@code {
+    [Parameter] public FarmSetupModel Model { get; set; }
+    [Parameter] public EventCallback<FarmSetupModel> ModelChanged { get; set; }
+
+    private async Task CompleteSetup()
+    {
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to complete the setup?",
+            "Complete Setup",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+        );
+
+        if (confirm == true)
+        {
+            var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            string message = "Farm setup successfully completed.";
+            var farm = new FarmSetupDto
+            {
+                FarmId = Model.FarmId,
+                FarmName = Model.FarmName,
+                Location = Model.FarmLocation,
+                FullAddress = Model.FarmFullAddress,
+                OwnerName = Model.OwnerName,
+                SizeInHectares = Convert.ToDecimal(Model.FarmSizeHA),
+                SizeInSqm = Convert.ToDecimal(Model.FarmSizeSqm),
+                Tin = Model.Tin,
+                ContactEmail = Model.ContactEmail,
+                ContactPhone = Model.ContactPhone,
+            };
+            bool success = await FarmService.CompleteFarmSetupAsync(farm).ConfigureAwait(false);
+            if (success)
+            {
+                await NotificationService.ShowSuccess(message);
+                NavigationManager.NavigateTo("/dashboard");
+            }
+            else
+            {
+                message = "Farm setup failed. Please try again.";
+                await NotificationService.ShowError(message);
+            }
+
+            Model.IsFarmSetupComplete = success;
+
+            // set global settings
+            Settings.IsFarmSetupComplete = success.ToString();
+            Settings.IsFarmSetupStarted = success.ToString();
+
+            DialogService.Close(true);
+
+            await ModelChanged.InvokeAsync(Model).ConfigureAwait(false);
+        }
+    }
+}

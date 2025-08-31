@@ -1,0 +1,162 @@
+﻿@inject FarmService FarmService
+@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+@inject NavigationManager NavigationManager
+@inject IValidator<FarmSetupDto> Validator
+@inject IJSRuntime JSRuntime
+
+<RadzenTemplateForm TItem="FarmSetupDto" Data="@obj" Submit="@CompleteSetup">
+    <RadzenRow>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack>
+                <FluentValidationValidator Validator="@Validator" />
+                @* <ValidationSummary /> *@
+
+                <RadzenFormField Text="Farm Name" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="@obj.FarmName" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.FarmName)" />
+
+                <RadzenFormField Text="Location" Variant="Variant.Text">
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-mt-2"><b>@Model.FarmLocation</b></RadzenText>
+                </RadzenFormField>
+                <ValidationMessage For="@(() => Model.FarmLocation)" />
+
+                <RadzenFormField Text="Full Address" Variant="Variant.Text">
+                    <RadzenTextArea Rows="2" @bind-Value="@obj.FullAddress" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.FullAddress)" />
+
+                <RadzenFormField Text="Farm Size (HA)" Variant="Variant.Text">
+                    <RadzenNumeric @bind-Value="@obj.SizeInHectares" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.SizeInHectares)" />
+
+                <RadzenFormField Text="Owner Name" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="@obj.OwnerName" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.OwnerName)" />
+
+                <RadzenFormField Text="Latitude" Variant="Variant.Text">
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-mt-2"><b>@Model.FarmCentroid.Lat</b></RadzenText>
+                </RadzenFormField>
+
+                <RadzenFormField Text="Longitude" Variant="Variant.Text">
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-mt-2"><b>@Model.FarmCentroid.Lng</b></RadzenText>
+                </RadzenFormField>
+
+                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-4 rz-mb-0">Boundary Points</RadzenText>
+                <RadzenCard Variant="Variant.Outlined">
+                    @foreach (var item in Model.FarmBoundary)
+                    {
+                        <RadzenText TextStyle="TextStyle.Caption" class="">@item.Lat, @item.Lng</RadzenText>
+                        <br />
+                    }
+                </RadzenCard>
+            </RadzenStack>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard Variant="Variant.Outlined" class="rz-mb-3">
+                <RadzenImage Path="@Model.FarmStaticMapUrl" class="umh-width-100" />
+            </RadzenCard>
+
+            <RadzenStack Orientation="Orientation.Horizontal">
+                <div class="umh-card-grid">
+                    @foreach (var zone in Model.FarmZones)
+                    {
+                        string cropName = "";
+                        var crop = Model.FarmCrops.FirstOrDefault(x => x.ZoneId.Equals(zone.ZoneId));
+                        cropName = crop is not null
+                        ? $"{crop.CropName}{(string.IsNullOrEmpty(crop.CropVariety) ? "" : $" ({crop.CropVariety})")}"
+                        : cropName;
+                        <RadzenCard Variant="Variant.Outlined" class="rz-background-color-primary-lighter rz-shadow-0 rz-p-5 umh-width-100">
+                            <RadzenText TextStyle="TextStyle.H6" class=""><b>@zone.ZoneName</b></RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="">@cropName</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="">@zone.Description</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body1" class="">@(zone.SizeInHectares?.ToString("n1") ?? "0.0") hectares</RadzenText>
+                        </RadzenCard>
+                    }
+                </div>
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenFooter>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+            <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text=@(isSaving ? "Saving..." : "Complete Setup") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+        </RadzenStack>
+    </RadzenFooter>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public FarmSetupModel Model { get; set; }
+
+    private FarmSetupDto obj;
+    private bool isSaving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Model != null && obj == null)
+        {
+            obj = new FarmSetupDto
+            {
+                FarmId = Model.FarmId,
+                FarmName = Model.FarmName,
+                Location = Model.FarmLocation,
+                FullAddress = Model.FarmFullAddress,
+                SizeInHectares = (decimal)Model.FarmSizeHA,
+                SizeInSqm = (decimal)Model.FarmSizeSqm,
+                OwnerName = Model.OwnerName,
+                BoundaryJson = JsonSerializer.Serialize(Model.FarmBoundary),
+                StaticMapUrl = Model.FarmStaticMapUrl
+            };
+        }
+        await Task.CompletedTask;
+    }
+
+    private async Task CompleteSetup()
+    {
+        if (string.IsNullOrEmpty(obj.FarmName))
+        {
+            await NotificationService.ShowWarning("Farm name is required.", "Farm Setup");
+            return;
+        }
+
+        var confirm = await DialogService.Confirm(
+            $"Are you sure you want to complete the setup?",
+            "Complete Setup",
+            new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+        );
+
+        if (confirm == true)
+        {
+            isSaving = true;
+
+            var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+            string message = "Farm setup successfully completed.";
+            bool success = await FarmService.CompleteFarmSetupAsync(obj).ConfigureAwait(false);
+            if (success)
+            {
+                DialogService.Close(true);
+                await NotificationService.ShowSuccess(message);
+                //NavigationManager.NavigateTo("/dashboard");
+            }
+            else
+            {
+                DialogService.Close(true);
+                isSaving = false;
+                message = "Farm setup failed. Please try again.";
+                await NotificationService.ShowError(message);
+                return;
+            }
+
+            Model.IsFarmSetupComplete = success;
+
+            isSaving = false;
+
+            DialogService.Close(true);
+        }
+    }
+}

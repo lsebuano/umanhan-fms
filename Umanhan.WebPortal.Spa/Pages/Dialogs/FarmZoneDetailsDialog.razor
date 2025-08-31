@@ -1,0 +1,278 @@
+﻿@inject IJSRuntime JSRuntime
+@inject DialogService DialogService
+@inject FarmZoneService FarmZoneService
+@inject FarmCropService FarmCropService
+@inject CropService CropService
+@inject UnitService UnitService
+@inject AppNotificationService NotificationService
+@inject IValidator<FarmCropDto> Validator
+
+<RadzenTemplateForm TItem="FarmCropDto" Data="@obj" Submit="SaveChanges">
+    <RadzenRow>
+        <RadzenColumn>
+            <RadzenStack>
+                <FluentValidationValidator Validator="@Validator" />
+
+                <RadzenText TextStyle="TextStyle.H5">Crop Details</RadzenText>
+
+                <RadzenFormField Text="Crop" Variant="Variant.Text">
+                    <RadzenDropDown @ref=@radzenDropDown @bind-SearchText=SearchText FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    FilterOperator="StringFilterOperator.StartsWith" AllowFiltering="true" Change="OnCropChange"
+                                    Data=@crops TextProperty="@nameof(CropDto.CropName)" ValueProperty="@nameof(CropDto.CropId)"
+                                    AllowClear="true" @bind-Value="obj.CropId" Name="CropId" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.CropId)" />
+
+                <RadzenFormField Text="Unit" Variant="Variant.Text">
+                    <RadzenDropDown @ref=@radzenDropDown @bind-SearchText=SearchText FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                    FilterOperator="StringFilterOperator.StartsWith" AllowFiltering="true"
+                                    Data=@units TextProperty="@nameof(UnitDto.UnitName)" ValueProperty="@nameof(UnitDto.UnitId)"
+                                    AllowClear="true" @bind-Value="obj.UnitId" Name="UnitId" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.UnitId)" />
+
+                <RadzenFormField Text="Variety" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.CropVariety" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.CropVariety)" />
+
+                <RadzenFormField Text="Default Rate per Unit (Php)" Variant="Variant.Text">
+                    <RadzenNumeric @bind-Value="obj.DefaultRate" Placeholder="0.00" Step="0.05" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.DefaultRate)" />
+
+                @* <RadzenFormField Text="Planting Date" Variant="Variant.Text">
+                    <RadzenDatePicker TValue="DateOnly" @bind-Value="obj.PlantingDateUtc" Max="DateTime.Now" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.PlantingDateUtc)" /> *@
+
+                <RadzenFormField Text="Estimated Harvest Date" Variant="Variant.Text">
+                    <RadzenDatePicker TValue="DateOnly?" @bind-Value="obj.EstimatedHarvestDateUtc" Min="DateTime.Now" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.EstimatedHarvestDateUtc)" />
+
+            </RadzenStack>
+        </RadzenColumn>
+        <RadzenColumn>
+            <RadzenStack>
+                <RadzenText TextStyle="TextStyle.H5">Farm & Zone Details</RadzenText>
+                <RadzenFormField Text="Farm" Variant="Variant.Filled">
+                    <RadzenTextBox @bind-Value="obj.FarmName" ReadOnly="true" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.FarmName)" />
+
+                <RadzenFormField Text="Zone" Variant="Variant.Filled">
+                    <RadzenTextBox @bind-Value="obj.ZoneName" ReadOnly="true" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.ZoneName)" />
+
+                <RadzenFormField Text="Irrigation Type" Variant="Variant.Filled">
+                    <RadzenTextBox @bind-Value="obj.ZoneIrrigationType" ReadOnly="true" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.ZoneIrrigationType)" />
+
+                <RadzenFormField Text="Zone Size (Hectares)" Variant="Variant.Filled">
+                    <RadzenNumeric @bind-Value="obj.ZoneSizeInHectares" Format="n1" ReadOnly="true" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.ZoneSizeInHectares)" />
+
+                <RadzenFormField Text="Zone Soil Type" Variant="Variant.Filled">
+                    <RadzenTextBox @bind-Value="obj.ZoneSoilType" Format="n1" ReadOnly="true" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.ZoneSoilType)" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenFooter>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+            <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+        </RadzenStack>
+    </RadzenFooter>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public FarmSetupModel Model { get; set; }
+    [Parameter] public Guid ZoneId { get; set; }
+    [Parameter] public Guid FarmCropId { get; set; }
+    [Parameter] public EventCallback<FarmSetupModel> ModelChanged { get; set; }
+
+    private FarmCropDto obj;
+    private EditContext editContext;
+    private bool isSaving = false;
+    private string title = "Message";
+    private string message;
+
+    RadzenDropDown<Guid> radzenDropDown;
+    private IEnumerable<CropDto> crops;
+    private IEnumerable<UnitDto> units;
+    private string searchText;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (obj == null)
+        {
+            obj = new FarmCropDto();
+        }
+
+        await LoadFarmCropDetails().ConfigureAwait(false);
+
+        obj.ZoneId = ZoneId;
+        obj.FarmId = Model.FarmId;
+
+        // initialize the context
+        editContext = new EditContext(obj);
+        await LoadCrops().ConfigureAwait(false);
+        await LoadUnits().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        // update the context
+        editContext = new EditContext(obj);
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            await JSRuntime.InvokeVoidAsync("console.log", "Form validation failed!");
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync("console.log", "Form validation success!");
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions
+        {
+            ShowTitle = false,
+            CloseDialogOnEsc = false,
+            Style = "min-height:auto;min-width:auto;width:auto"
+        });
+
+        try
+        {
+            FarmCropDto response = await FarmCropService.CreateUpdateFarmCropAsync(obj).ConfigureAwait(false);
+            if (response == null)
+            {
+                await JSRuntime.InvokeVoidAsync("console.log", "Response is null");
+
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+                DialogService.Close(false);
+            }
+            else
+            {
+                Guid updatedFarmCropId = response.FarmCropId;
+
+                await NotificationService.ShowSuccess(message);
+                await ModelChanged.InvokeAsync(Model).ConfigureAwait(false);
+
+                StateHasChanged();
+
+                DialogService.Close(true);
+                DialogService.Close(updatedFarmCropId);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+            DialogService.Close(false);
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+
+    public string SearchText
+    {
+        get
+        {
+            return searchText;
+        }
+        set
+        {
+            if (searchText != value)
+            {
+                searchText = value;
+                // searchTextStatus = $"Search text: {searchText}";
+                //Console.WriteLine($"Search text: {radzenDropDown.SearchText}");
+            }
+        }
+    }
+
+    private async Task LoadFarmCropDetails()
+    {
+        try
+        {
+            var task = DialogService.OpenAsync<BusyDialog>("",
+            new Dictionary<string, object>
+                                {
+                {"Message","Loading details. Please wait..." }
+                                },
+            new DialogOptions
+                {
+                    ShowTitle = false,
+                    CloseDialogOnEsc = false,
+                    Style = "min-height:auto;min-width:auto;width:auto"
+                });
+
+            var response = await FarmCropService.GetFarmCropByIdAsync(FarmCropId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+                StateHasChanged();
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        finally
+        {
+            DialogService.Close();
+        }
+    }
+
+    private async Task LoadCrops()
+    {
+        var response = await CropService.GetAllCropsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            crops = response.Data;
+            StateHasChanged();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadUnits()
+    {
+        var response = await UnitService.GetAllUnitsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            units = response.Data;
+            StateHasChanged();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private void OnCropChange(object value)
+    {
+        if (value != null)
+        {
+            obj.CropId = (Guid)value;
+            obj.CropName = crops.FirstOrDefault(x => x.CropId == obj.CropId)?.CropName;
+            obj.UnitId = crops.FirstOrDefault(x => x.CropId == obj.CropId).DefaultUnitId;
+
+            StateHasChanged();
+        }
+    }
+}

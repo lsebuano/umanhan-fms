@@ -1,0 +1,269 @@
+﻿@inject DialogService DialogService
+@inject TaskService TaskService
+@inject ProductTypeService ProductTypeService
+@inject ProductService ProductService
+@inject StaffService StaffService
+@inject FarmActivityService FarmActivityService
+@inject AppNotificationService NotificationService
+@inject IValidator<FarmActivityDto> Validator
+
+<RadzenTemplateForm TItem="FarmActivityDto" Data="@Model" Submit="@OnSubmit">
+    <RadzenStack Gap="1rem">
+        <FluentValidationValidator Validator="@Validator" />
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenLabel Text="Type" Component="ProductTypeId" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="8">
+                @* <RadzenDropDown class="umh-width-100" Data=@productTypes Placeholder="Select type" TextProperty="@nameof(ProductTypeDto.ProductTypeName)" ValueProperty="@nameof(ProductTypeDto.TypeId)"
+                                AllowClear="false" @bind-Value="@selectedProductTypeId" Name="ProductTypeId" Change="OnTypeChange" /> 
+                  <ValidationMessage For="@(() => Model.ProductTypeId)" />              
+                                *@
+                @* <RadzenDropDown class="umh-width-100" Data=@productTypes Placeholder="Select type" TextProperty="@nameof(ProductTypeDto.ProductTypeName)" ValueProperty="@nameof(ProductTypeDto.TypeId)"
+                AllowClear="false" @bind-Value=@selectedProductTypeId Name="ProductTypeId" /> *@
+
+                <RadzenDropDown @bind-Value="@Model.ProductTypeId" Data=@productTypes TextProperty="ProductTypeName" Placeholder="Select type" ValueProperty="TypeId"
+                                class="umh-width-100" Name="ProductTypeId" Change="OnTypeChange" />
+                <ValidationMessage For="@(() => Model.ProductTypeId)" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenLabel Text="Product" Component="ProductId" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenDropDown @bind-Value="@Model.ProductId" Data="@products" Placeholder="Select product" class="umh-width-100"
+                                TextProperty="ProductName" ValueProperty="ProductId" Name="ProductId" />
+                <ValidationMessage For="@(() => Model.ProductId)" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenLabel Text="Task" Component="TaskId" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenDropDown @bind-Value="@Model.TaskId" AllowClear="false" Placeholder="Select task" Data="@tasks" class="umh-width-100"
+                                TextProperty="TaskName" ValueProperty="TaskId" Name="TaskId" AllowSelectAll=false
+                                AllowFiltering="true" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" Change="OnTaskChange" />
+                <ValidationMessage For="@(() => Model.TaskId)" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenLabel Text="Activity Supervisor" Component="SupervisorId" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenDropDown @bind-Value="@Model.SupervisorId" Data="@staffs" Placeholder="Select supervisor" class="umh-width-100"
+                                TextProperty="Name" ValueProperty="StaffId" Name="SupervisorId" />
+                <ValidationMessage For="@(() => Model.SupervisorId)" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenLabel Text="Start" Component="StartDateTime" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenDatePicker @bind-Value="@Model.StartDateTime" Name="StartDateTime" ShowTime="true" />
+                <ValidationMessage For="@(() => Model.StartDateTime)" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenLabel Text="End" Component="EndDateTime" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenDatePicker @bind-Value="@Model.EndDateTime" Name="EndDateTime" ShowTime="true" />
+                <ValidationMessage For="@(() => Model.EndDateTime)" />
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenRow AlignItems="AlignItems.Center">
+            <RadzenColumn Size="12" SizeMD="4">
+                <RadzenLabel Text="Notes" Component="Notes" />
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="8">
+                <RadzenTextArea @bind-Value="@Model.Notes" Name="Notes" class="umh-width-100" Rows="5" />
+                <ValidationMessage For="@(() => Model.Notes)" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenStack>
+
+    <RadzenFooter>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" class="rz-mt-10">
+            <RadzenButton Text="Cancel" Click="() => DialogService.Close(null)" ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") ButtonType="ButtonType.Submit" Disabled="isSaving" />
+        </RadzenStack>
+    </RadzenFooter>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter]
+    public Guid FarmId { get; set; }
+    [Parameter]
+    public DateTime Start { get; set; }
+    [Parameter]
+    public DateTime? End { get; set; }
+
+    private FarmActivityDto Model;
+    private string selectedTaskName;
+
+    //private Guid selectedTaskId;
+    //private Guid selectedProductTypeId = Guid.Empty;
+    //private Guid selectedProductId;
+    //private Guid selectedStaffId;
+
+    private IEnumerable<TaskDto> tasks = [];
+    private IEnumerable<ProductTypeDto> productTypes = [];
+    private IEnumerable<ProductDto> products = [];
+    private IEnumerable<StaffDto> staffs = [];
+
+    private EditContext editContext;
+    private bool isSaving;
+    private bool isSuccess;
+    private string message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>OnInitializedAsync");
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        if (Model == null)
+        {
+            Model = new FarmActivityDto();
+        }
+        editContext = new EditContext(Model);
+
+        await LoadTypes().ConfigureAwait(false);
+        await LoadTasks().ConfigureAwait(false);
+        await LoadStaffs().ConfigureAwait(false);
+
+        DialogService.Close(Model);
+    }
+
+    protected override void OnParametersSet()
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>OnParametersSet");
+
+        Model.FarmId = FarmId;
+        Model.StartDateTime = Start;
+        Model.EndDateTime = End != null ? End.Value : null;
+
+        editContext = new EditContext(Model);
+    }
+
+    async Task OnTaskChange(object value)
+    {
+        Guid selectedTaskId = (Guid)value;
+        //Console.WriteLine($"selectedTaskId: {selectedTaskId.ToString()}");
+
+        selectedTaskName = tasks.FirstOrDefault(x => x.TaskId.Equals(selectedTaskId))?.TaskName;
+        //Console.WriteLine($"selectedTaskName: {selectedTaskName}");
+    }
+
+    async Task OnTypeChange()
+    {
+        await LoadProducts().ConfigureAwait(false);
+    }
+
+    async Task LoadTasks()
+    {
+        var response = await TaskService.GetTasksForFarmActivitiesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            tasks = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadTypes()
+    {
+        var response = await ProductTypeService.GetAllProductTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            productTypes = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadProducts()
+    {
+        var typeId = Model.ProductTypeId;
+        if (typeId == Guid.Empty)
+        {
+            products = new List<ProductDto>();
+            return;
+        }
+
+        var response = await ProductService.GetProductsByFarmByTypeAsync(FarmId, typeId).ConfigureAwait(false);
+        if (response.IsSuccess)
+            products = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    async Task LoadStaffs()
+    {
+        var response = await StaffService.GetStaffsByFarmAsync(FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+            staffs = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task OnSubmit(FarmActivityDto model)
+    {
+        //Console.WriteLine(">>>>>>>>>>>>>OnSubmit");
+        if (isSaving) return;
+
+        if (!editContext.Validate())
+        {
+            //Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        isSaving = true;
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            //model.ProductTypeId = selectedProductTypeId;
+            model.FarmId = FarmId;
+            model.Task = selectedTaskName;
+
+            var response = await FarmActivityService.CreateFarmActivitiesAsync(model).ConfigureAwait(false);
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                //model.Task = response.Task;
+
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+            DialogService.Close(null);
+            DialogService.Close(model);
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            if (isSuccess)
+                DialogService.Close(null); // close the parent dialog
+        }
+    }
+}

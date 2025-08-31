@@ -1,0 +1,108 @@
+﻿@inject IJSRuntime JSRuntime
+@inject FarmService FarmService
+@inject AppNotificationService NotificationService
+
+<a id="staticLink" href="#" target="_blank" title="Show static map" class="rz-display-none">Show static map</a>
+<div id="map"></div>
+
+@code {
+    private FarmSetupModel Model;
+    private DotNetObjectReference<FarmMapSnapshot>? dotNetRef;
+
+    private Guid farmId = Guid.Parse("10c3b482-ff26-47a7-b7ff-63e6619ecd2a"); // TODO:
+    private bool isMapLoaded = false;
+
+    // default center, Manila
+    private double lat = 14.598722892908546;
+    private double lng = 120.98412850749237;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isMapLoaded)
+        {
+            isMapLoaded = true;
+            dotNetRef = DotNetObjectReference.Create(this);
+
+            // Wait for JS to fully load before calling initialize
+            await JSRuntime.InvokeVoidAsync("eval", "window.farmMap && farmMap.initialize ? farmMap.initialize(null) : console.error('farmMap is not ready yet');");
+            await JSRuntime.InvokeVoidAsync("setTimeout", "farmMap.initialize", 1000);
+            await JSRuntime.InvokeVoidAsync("farmMap.initialize", dotNetRef, lat, lng, false);
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("console.log", "FarmMapSnapshot: OnAfterRenderAsync: firstRender = false");
+        }
+    }
+
+    [JSInvokable("LoadFarmZoneMapData")]
+    public async Task<object> LoadFarmZoneMapData()
+    {
+        var response = await FarmService.GetFarmByIdAsync(farmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            var farmObj = response.Data;
+            await JSRuntime.InvokeVoidAsync("console.log", "farmObj", farmObj);
+            if (farmObj == null)
+            {
+                // show error message
+                return new
+                {
+                    this.Model.FarmBoundary,
+                    this.Model.FarmZones,
+                    this.Model.Zones,
+                };
+            }
+
+            if (string.IsNullOrEmpty(farmObj.BoundaryJson))
+            {
+                // show error message
+                return new
+                {
+                    this.Model.FarmBoundary,
+                    this.Model.FarmZones,
+                    this.Model.Zones
+                };
+            }
+
+            Model.FarmBoundary = JsonSerializer.Deserialize<IEnumerable<LatLng>>(farmObj.BoundaryJson);
+            Model.FarmZones = farmObj.FarmZones.Where(x => !string.IsNullOrWhiteSpace(x.ZoneBoundaryJson))
+                                              .Select(x => new FarmZoneDto
+                                                  {
+                                                      ZoneId = x.ZoneId,
+                                                      ZoneName = x.ZoneName,
+                                                      ZoneColor = x.ZoneColor,
+                                                      ZoneCentroidLat = x.ZoneCentroidLat,
+                                                      ZoneCentroidLng = x.ZoneCentroidLng,
+                                                      ZoneBoundaryJson = x.ZoneBoundaryJson,
+                                                      AreaInSqm = x.AreaInSqm
+                                                  })
+                                              .ToList();
+            Model.Zones = this.Model.FarmZones.ToDictionary(z => z.ZoneId.ToString(),
+                                                     z => JsonSerializer.Deserialize<IEnumerable<LatLng>>(z.ZoneBoundaryJson) ?? new List<LatLng>());
+
+            Model.IsFarmBoundaryDrawn = Model.FarmBoundary.Any();
+            Model.IsZoneBoundariesDrawn = Model.Zones.Count > 0;
+            Model.FarmCentroid = new LatLng
+                {
+                    Lat = Convert.ToDouble(farmObj.Lat),
+                    Lng = Convert.ToDouble(farmObj.Lng)
+                };
+            Model.FarmCrops = farmObj.FarmCrops.ToList();
+            Model.FarmId = farmObj.FarmId;
+            Model.FarmName = farmObj.FarmName;
+            Model.FarmCentroid = Model.FarmCentroid;
+            Model.FarmSizeHA = Convert.ToDouble(farmObj.SizeInHectares);
+            Model.FarmSizeSqm = Convert.ToDouble(farmObj.SizeInSqm);
+            Model.FarmLocation = farmObj.Location;
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+
+        return new
+        {
+            this.Model.FarmBoundary,
+            this.Model.FarmZones,
+            this.Model.Zones
+        };
+    }
+}

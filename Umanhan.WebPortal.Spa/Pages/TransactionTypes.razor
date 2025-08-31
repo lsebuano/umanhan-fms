@@ -1,0 +1,144 @@
+﻿@page "/transaction-types"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject TransactionTypeService TransactionTypeService
+@inject UserStateService UserState
+
+<PermissionView Permission="Masterdata.Full">
+    <ChildContent>
+        <PageTitle>Transaction Types</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/transaction-types" Text="Transaction Types" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Transaction Types</RadzenText>
+
+        @if (transactionTypes == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <RadzenRow>
+                <RadzenColumn Size="12" SizeMD="12">
+                    <div class="full-height-container">
+                        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                        AllowSorting="true" PagerHorizontalAlign="HorizontalAlign.Left" Data="@transactionTypes" GridLines="DataGridGridLines.Vertical"
+                                        ColumnWidth="100%" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                        @bind-Value=@selectedObjList IsLoading=@isLoading Page="@ShowLoading" class="umh-height-70vh">
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                @if (UserState.IsSuperAdmin)
+                                {
+                                    <RadzenButton Text="New" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@(() => OpenDialog(Guid.Empty))></RadzenButton>
+                                }
+                            </HeaderTemplate>
+                            <Columns>
+                                @if (UserState.IsSuperAdmin)
+                                {
+                                    <RadzenDataGridColumn Context="obj" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" Width="120px">
+                                        <Template Context="obj">
+                                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                          Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => OpenDialog(obj.TypeId))"
+                                                          @onclick:stopPropagation="true" title="Edit" />
+                                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                          Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => Delete(obj))"
+                                                          @onclick:stopPropagation="true" title="Delete" />
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                }
+                                <RadzenDataGridColumn Property="@nameof(TransactionTypeDto.TransactionTypeName)" Title="Transaction Type" Frozen="false" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </RadzenColumn>
+                @* <RadzenColumn Size="12" SizeMD="8">
+
+        </RadzenColumn> *@
+            </RadzenRow>
+        }
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    private IEnumerable<TransactionTypeDto>? transactionTypes;
+    private IList<TransactionTypeDto> selectedObjList;
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ShowLoading().ConfigureAwait(false);
+        await LoadList().ConfigureAwait(false);
+    }
+
+    private async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    private async Task LoadList()
+    {
+        var response = await TransactionTypeService.GetAllTransactionTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            transactionTypes = response.Data;
+            selectedObjList = new List<TransactionTypeDto>() { transactionTypes.FirstOrDefault() };
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task OpenDialog(Guid id)
+    {
+        var result = await DialogService.OpenAsync<TransactionTypeDialog>("Transaction Type",
+                    new Dictionary<string, object> { { "ObjId", id } },
+                    new DialogOptions()
+                    {
+                        Width = "50vw",
+                        Height = "80vh",
+                    });
+        // refresh grid if the dialog returns true
+        if (result != null)
+        {
+            await GridReload();
+        }
+    }
+
+    private async Task GridReload()
+    {
+        await LoadList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Delete(TransactionTypeDto obj)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove '{obj.TransactionTypeName}'?",
+                "Confirm Remove",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await TransactionTypeService.DeleteTransactionTypeAsync(obj.TypeId).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess("Delete Successful");
+                // refresh grid
+                await LoadList();
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+    }
+}

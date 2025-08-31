@@ -1,0 +1,591 @@
+﻿@attribute [Authorize]
+@inject DialogService DialogService
+@inject SystemSettingService SystemSettingService
+@inject UnitService UnitService
+@inject ProductService ProductService
+@inject ProductTypeService ProductTypeService
+@inject CustomerService CustomerService
+@inject TransactionTypeService TransactionTypeService
+@inject AppNotificationService NotificationService
+@inject FarmTransactionService FarmTransactionService
+@inject TooltipService TooltipService
+@inject IValidator<FarmTransactionDto> Validator
+@inject WebAppSettingService AppSettingService
+
+<PermissionView Permission="Cashier.Full">
+    <ChildContent>
+        <PageTitle>Encode Sales</PageTitle>
+        <RadzenRow>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" class="rz-my-8">
+                <RadzenText TextStyle="TextStyle.H5">Encode Farm Sales</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@FarmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(FarmName))" />
+            </RadzenStack>
+        </RadzenRow>
+
+        <RadzenRow>
+            <RadzenColumn SizeMD="4">
+                <RadzenTemplateForm TItem="FarmTransactionDto" Data="@obj" Submit="@SaveChanges">
+                    <FluentValidationValidator Validator="@Validator" />
+                    @* <ValidationSummary /> *@
+
+                    <RadzenCard class="rz-p-4 rz-mb-4" Variant="Variant.Filled">
+                        <RadzenStack Orientation="Orientation.Vertical" Gap="4px">
+                            <RadzenLabel Text="Transaction Type" />
+                            @if (transactionTypes.Any())
+                            {
+                                <RadzenSelectBar @bind-Value="@obj.TransactionTypeId" TextProperty="TransactionTypeName" ValueProperty="TypeId"
+                                                 Data="@transactionTypes" Size="ButtonSize.Small" class="rz-display-xl-flex" Change="@((Guid x) => OnSelectBarChange(x))" />
+                            }
+                            else
+                            {
+                                <RadzenText Text="@transactionTypesLoading" />
+                            }
+                        </RadzenStack>
+                        <ValidationMessage For="@(() => obj.TransactionTypeId)" />
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Filled">
+                        <RadzenStack Orientation="Orientation.Vertical">
+                            <RadzenTextBox Value="@obj.FarmId.ToString()" class="rz-display-none" Name="FarmId" />
+                            <RadzenFormField Text="Product Type" Variant="Variant.Text">
+                                <RadzenDropDown @bind-Value="@obj.ProductTypeId" Data=@productTypes TextProperty="ProductTypeName"
+                                                Placeholder="Select product type" ValueProperty="TypeId"
+                                                class="umh-width-100" Name="ProductTypeId" Change="@(() => LoadProductsFromProduceInventory(obj.ProductTypeId))" />
+                            </RadzenFormField>
+                            <ValidationMessage For="@(() => obj.ProductTypeId)" />
+
+                            <RadzenFormField Text="Product" Variant="Variant.Text">
+                                <RadzenDropDown @bind-Value="@obj.ProductId" Data=@productsByType TextProperty="Product"
+                                                Placeholder="Select product" ValueProperty="ProductId"
+                                                class="umh-width-100" Name="ProductId" Change="@(() => SetUnit(obj.ProductId))">
+                                    <Template Context="product">
+                                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                            <RadzenText Text="@product.Product" />
+                                            @if (!string.IsNullOrEmpty(product.ProductVariety))
+                                            {
+                                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Variant="Variant.Outlined" Text="@product.Variety" />
+                                            }
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@product.Date.ToString("MM/dd/yyyy")" />
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@product.CurrentQuantity.ToString("n0")" />
+                                        </RadzenStack>
+                                    </Template>
+                                    <ValueTemplate Context="product">
+                                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                            <RadzenText Text="@product.Product" />
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@product.Date.ToString("MM/dd/yyyy")" />
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@product.CurrentQuantity.ToString("n0")" />
+                                        </RadzenStack>
+                                    </ValueTemplate>
+                                </RadzenDropDown>
+                            </RadzenFormField>
+                            <ValidationMessage For="@(() => obj.ProductId)" />
+
+                            <RadzenStack Orientation="Orientation.Horizontal">
+                                <RadzenFormField Text="Stock" Variant="Variant.Text" class="umh-min-width-60" >
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@stock.ToString("n0")" class="rz-my-3" />
+                                </RadzenFormField>
+                                <RadzenFormField Text="Unit" Variant="Variant.Text" class="umh-min-width-40">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@unitName" class="rz-my-3" />
+                                </RadzenFormField>
+                            </RadzenStack>
+
+                            <RadzenStack Orientation="Orientation.Horizontal">
+                                <RadzenStack Orientation="Orientation.Vertical">
+                                    <RadzenFormField Text="Quantity" Variant="Variant.Text" class="umh-min-width-50">
+                                        <RadzenNumeric @bind-Value="obj.Quantity" />
+                                    </RadzenFormField>
+                                    <ValidationMessage For="@(() => obj.Quantity)" />
+                                </RadzenStack>
+                                <RadzenStack Orientation="Orientation.Vertical">
+                                    <RadzenFormField Text="Unit Price" Variant="Variant.Text" class="umh-min-width-50">
+                                        <RadzenNumeric @bind-Value="obj.UnitPrice" />
+                                    </RadzenFormField>
+                                    <ValidationMessage For="@(() => obj.UnitPrice)" />
+                                </RadzenStack>
+                            </RadzenStack>
+
+                            <RadzenFormField Text="Total" Variant="Variant.Text" AllowFloatingLabel="false">
+                                <RadzenText TextStyle="TextStyle.H3" Text="@($"{obj.Quantity * obj.UnitPrice:n2}")" class="umh-width-100 rz-mt-2" />
+                            </RadzenFormField>
+
+                            <RadzenStack Orientation="Orientation.Horizontal">
+                                <RadzenFormField Text="Transaction Date" Variant="Variant.Text" class="umh-min-width-50">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@today.ToString("MM/dd/yyyy")" class="rz-my-3" />
+                                </RadzenFormField>
+                                @if (transactionType == TransactionType.SALE)
+                                {
+                                    <RadzenFormField Text="Payment Type" Variant="Variant.Text" class="umh-min-width-50">
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Lighter" Variant="Variant.Flat" Text="CASH" class="rz-my-3" />
+                                    </RadzenFormField>
+                                }
+                            </RadzenStack>
+
+                            <RadzenFormField Text="@buyerText" Variant="Variant.Text">
+                                <RadzenDropDown @bind-Value="@obj.BuyerId" Data=@customers TextProperty="CustomerName" AllowClear=true
+                                                Placeholder="Select" ValueProperty="CustomerId"
+                                                class="umh-width-100" Name="BuyerId" Change="@(() => ShowCustomerName(obj.BuyerId))" />
+                                <RadzenTextBox @bind-Value="obj.BuyerName" Placeholder="Or type name here" />
+                            </RadzenFormField>
+                            <ValidationMessage For="@(() => obj.BuyerName)" />
+
+                            <RadzenFormField Text="Notes" Variant="Variant.Text">
+                                <RadzenTextArea @bind-Value="obj.Notes" Rows="2" />
+                            </RadzenFormField>
+                            <ValidationMessage For="@(() => obj.Notes)" />
+                        </RadzenStack>
+
+                        <RadzenFooter>
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" Gap="0.5rem" class="rz-mt-5">
+                                <RadzenButton Text="Clear" ButtonStyle="ButtonStyle.Light" />
+                                <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                            </RadzenStack>
+                        </RadzenFooter>
+                    </RadzenCard>
+                </RadzenTemplateForm>
+            </RadzenColumn>
+
+            <RadzenColumn SizeMD="3">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenText Text="Recent Transactions" TextStyle="TextStyle.Button" />
+                    <RadzenIcon Icon="info" class="umh-f-medium" MouseEnter="@(args => ShowTooltip(args, "Displays the top 5 recent sales for the current week."))" />
+                </RadzenStack>
+                <RadzenStack Orientation="Orientation.Horizontal" class="rz-mb-3">
+                    @foreach (var item in transactionTypes)
+                    {
+                        bool isToggled = toggleStates.TryGetValue(item.TypeId, out var val) && val;
+                        var count = recentSales.Where(x => x.TransactionTypeId == item.TypeId).Count();
+
+                        <RadzenToggleButton Shade="Shade.Lighter" ToggleShade="Shade.Default" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat"
+                                            @bind-Value="@isToggled" Change="@(v => FilterTransactions(v, item.TypeId))">
+                            @item.TransactionTypeName
+                            <RadzenBadge Variant="Variant.Flat" BadgeStyle="BadgeStyle.Light" Text="@count.ToString("n0")" class="rz-ms-2" />
+                        </RadzenToggleButton>
+                    }
+                </RadzenStack>
+                @if (filteredRecentSales.Any())
+                {
+                    @foreach (var sale in filteredRecentSales)
+                    {
+                        <RadzenCard Variant="Variant.Flat" class="rz-mb-2 umh-min-height-120px">
+                            <RadzenStack Orientation="Orientation.Vertical" JustifyContent="JustifyContent.Start" Gap="4px">
+                                <RadzenStack Orientation="Orientation.Horizontal">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Shade="Shade.Darker" Variant="Variant.Outlined" Text="@sale.TransactionType" />
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Base" Shade="Shade.Light" Variant="Variant.Flat" Text="@sale.Date.ToString("MM/dd/yyyy")" class="rz-ms-auto rz-color-base-700" />
+                                </RadzenStack>
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                                        <RadzenText TextStyle="TextStyle.H6" Text="@sale.Product" />
+                                        @if (!string.IsNullOrEmpty(sale.ProductVariety))
+                                        {
+                                            <RadzenBadge BadgeStyle="BadgeStyle.Info" Variant="Variant.Outlined" Text="@sale.ProductVariety" />
+                                        }
+                                    </RadzenStack>
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" class="rz-ms-auto">
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Variant="Variant.Outlined" Text="@(@$"{sale.Quantity.ToString("n0")} {@sale.Unit} x {sale.UnitPrice.ToString("n2")}")" title="Quantity x Price" />
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Variant="Variant.Flat" Text="@sale.TotalAmount.ToString("n2")" title="Total" />
+                                    </RadzenStack>
+                                </RadzenStack>
+                                @if (!string.IsNullOrEmpty(sale.BuyerName))
+                                {
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                                        <RadzenIcon Icon="diversity_4" title="Recipient/Buyer" />
+                                        <RadzenText TextStyle="TextStyle.Body1" Text="@sale.BuyerName" class="rz-ms-2" />
+                                    </RadzenStack>
+                                }
+                                @if (!string.IsNullOrEmpty(sale.Notes))
+                                {
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                                        <RadzenIcon Icon="article" title="Notes" />
+                                        <RadzenText TextStyle="TextStyle.Body1" Text="@sale.Notes" class="rz-ms-2" />
+                                    </RadzenStack>
+                                }
+                            </RadzenStack>
+                        </RadzenCard>
+                    }
+                }
+                else
+                {
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenText TextStyle="TextStyle.Body1" class="">@recentSalesLoading</RadzenText>
+                    </RadzenCard>
+                }
+            </RadzenColumn>
+
+            <RadzenColumn SizeMD="3">
+                <RadzenText Text="Inventory" TextStyle="TextStyle.Button" />
+                @if (inventories.Any())
+                {
+                    @foreach (var inv in inventories)
+                    {
+                        <RadzenCard Variant="Variant.Flat" class="rz-mb-2 umh-min-height-120px">
+                            <RadzenStack Orientation="Orientation.Vertical" JustifyContent="JustifyContent.Start" Gap="4px">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                                    <RadzenText TextStyle="TextStyle.H6" Text="@inv.Product" />
+                                    @if (!string.IsNullOrEmpty(inv.ProductVariety))
+                                    {
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Info" Variant="Variant.Outlined" Text="@inv.ProductVariety" />
+                                    }
+                                </RadzenStack>
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                    <RadzenText Text="Inventory Date" TextStyle="TextStyle.Body1" />
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Info" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@inv.Date.ToString("MM/dd/yyyy")" class="rz-ms-auto" />
+                                </RadzenStack>
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                    <RadzenText Text="Stock" TextStyle="TextStyle.Body1" />
+                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" class="rz-ms-auto">
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Shade="Shade.Lighter" Variant="Variant.Flat" Text="@inv.CurrentQuantity.ToString("n0")" title="Available stock" />
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Success" Variant="Variant.Outlined" Text="@inv.Unit" title="Unit" />
+                                    </RadzenStack>
+                                </RadzenStack>
+                            </RadzenStack>
+                        </RadzenCard>
+                    }
+                }
+                else
+                {
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenText TextStyle="TextStyle.Body1" class="">@inventoriesLoading</RadzenText>
+                    </RadzenCard>
+                }
+
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [Parameter] public Guid FarmId { get; set; }
+    [Parameter] public string FarmName { get; set; }
+
+    private List<UnitDto> units = new();
+    private List<FarmProduceInventoryDto> inventories = new();
+    private List<FarmProduceInventoryDto> productsByType = new();
+    private List<ProductTypeDto> productTypes = new();
+    private List<TransactionTypeDto> transactionTypes = new();
+    private List<CustomerDto> customers = new();
+    private List<FarmTransactionDto> recentSales = new();
+    private List<FarmTransactionDto> filteredRecentSales = new();
+
+    private FarmProduceInventoryDto selectedProduct;
+    // private TransactionTypeDto transactionType;
+    private FarmTransactionDto obj = new();
+    private EditContext editContext;
+    private bool isSaving;
+    private Guid objId;
+    private Guid transactionTypeId;
+    private string mode = "Add";
+    private string message;
+    private string unitName = "...";
+    private decimal stock = 0;
+    private DateTime today = DateTime.Now.ToLocalTime();
+    private string recentSalesLoading = "Loading...";
+    private string inventoriesLoading = "Loading...";
+    private string transactionTypesLoading = "Loading...";
+    private string buyerText = "Name";
+    private Models.Models.TransactionType transactionType = TransactionType.SALE;
+    private Dictionary<Guid, bool> toggleStates = new();
+    private WebAppSetting Settings;
+    private bool hasLoadedSecondaryData = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+
+        NewContext();
+        // initialize the context
+        editContext = new EditContext(obj);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+            _ = Task.Run(async () =>
+            {
+                await LoadTransactionTypes().ConfigureAwait(false);
+                await LoadProductTypes().ConfigureAwait(false);
+                await LoadCustomers().ConfigureAwait(false);
+                //await LoadUnits().ConfigureAwait(false);
+
+                await Task.Delay(3000);
+                await LoadProduceInventory().ConfigureAwait(false);
+                await LoadRecentSales().ConfigureAwait(false);
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        if (FarmId == Guid.Empty)
+        {
+            Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+            if (Settings != null)
+            {
+                FarmId = Settings.FarmId;
+                FarmName = Settings.FarmName;
+
+                StateHasChanged();
+            }
+        }
+
+        if (transactionTypeId == Guid.Empty)
+        {
+            await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+            transactionTypeId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_TRANSACTION_TYPE.ToString());
+        }
+    }
+
+    private async Task LoadUnits()
+    {
+        var response = await UnitService.GetAllUnitsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            units = response.Data.ToList();
+        }
+        //else
+        //    await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadTransactionTypes()
+    {
+        var response = await TransactionTypeService.GetAllTransactionTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            transactionTypes = response.Data.ToList();
+
+            toggleStates = transactionTypes.ToDictionary(t => t.TypeId, t => false);
+
+            // transactionType = transactionTypes.FirstOrDefault(x => x.TypeId == transactionTypeId);
+            if (!transactionTypes.Any())
+                transactionTypesLoading = "No transaction types available";
+        }
+        //else
+        //    await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadCustomers()
+    {
+        var response = await CustomerService.GetAllCustomersAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            customers = response.Data.ToList();
+        }
+        //else
+        //    await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadProductTypes()
+    {
+        var response = await ProductTypeService.GetAllProductTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            productTypes = response.Data.ToList();
+        }
+        //else
+        //    await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void ShowCustomerName(Guid? customerId)
+    {
+        if (customerId == null || customerId == Guid.Empty)
+        {
+            obj.BuyerName = string.Empty;
+            return;
+        }
+
+        obj.BuyerName = customers.FirstOrDefault(x => x.CustomerId == customerId)?.CustomerName;
+    }
+
+    void SetUnit(Guid productId)
+    {
+        selectedProduct = productsByType.FirstOrDefault(x => x.ProductId == productId);
+        unitName = selectedProduct.Unit;
+        stock = selectedProduct.CurrentQuantity;
+
+        obj.UnitId = selectedProduct.UnitId;
+        if (transactionType == TransactionType.SALE)
+            obj.UnitPrice = selectedProduct.UnitPrice;
+        else
+            obj.UnitPrice = 0;
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (selectedProduct == null)
+        {
+            isSaving = false;
+            editContext.Validate();
+            return;
+        }
+
+        // set before validation
+        obj.ProduceInventoryId = selectedProduct.InventoryId;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            isSaving = false;
+            return;
+        }
+
+        if (obj.Quantity > stock)
+        {
+            await DialogService.Alert($"Not enough stock.", "Quantity");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            FarmTransactionDto response = null;
+            if (mode == "Add" && objId == Guid.Empty)
+            {
+                response = await FarmTransactionService.CreateFarmTransactionAsync(obj).ConfigureAwait(false);
+            }
+            // else
+            // {
+            //     response = await FarmTransactionService.UpdateCategoryAsync(obj).ConfigureAwait(false);
+            // }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await LoadProduceInventory().ConfigureAwait(false);
+                await LoadRecentSales().ConfigureAwait(false);
+                ResetForm();
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+
+    void ResetForm()
+    {
+        NewContext();
+        unitName = "...";
+        stock = 0;
+        //productsByType.Clear();
+    }
+
+    private async Task LoadProduceInventory()
+    {
+        var response = await ProductService.GetProductsFromProduceInventoryAsync(FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            inventories = response.Data.ToList();
+            if (!inventories.Any())
+                inventoriesLoading = "No farm produce available";
+        }
+        //else
+        //    await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private void LoadProductsFromProduceInventory(Guid productTypeId)
+    {
+        productsByType = inventories.Where(x => x.ProductTypeId == productTypeId).ToList();
+    }
+
+    private async Task LoadRecentSales()
+    {
+        var response = await FarmTransactionService.GetRecentFarmTransactionsAsync(FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            recentSales = response.Data.ToList();
+            filteredRecentSales = recentSales;
+
+            if (!recentSales.Any())
+                recentSalesLoading = "No recent transactions";
+        }
+        //else
+        //    await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void ShowTooltip(ElementReference el, string tooltip) => TooltipService.Open(el, tooltip, new TooltipOptions { Duration = 5000 });
+
+    void OnSelectBarChange(Guid typeId)
+    {
+        //Console.WriteLine(typeId);
+
+        var type = transactionTypes.FirstOrDefault(x => x.TypeId == typeId);
+        if (type != null)
+        {
+            transactionType = (Models.Models.TransactionType)Enum.Parse(typeof(Models.Models.TransactionType), type.TransactionTypeName.ToUpper());
+
+            // update context
+            transactionTypeId = type.TypeId;
+            NewContext();
+
+            //Console.WriteLine($"Selected Transaction Type: {type.TransactionTypeName}");
+        }
+        else
+        {
+            Console.WriteLine("Transaction type not found.");
+        }
+    }
+
+    void NewContext()
+    {
+        obj = new FarmTransactionDto
+        {
+            FarmId = FarmId,
+            TransactionTypeId = transactionTypeId,
+            TransactionType = transactionType.ToString(),
+            Quantity = 0,
+            UnitPrice = 0,
+            Date = today,
+            BuyerId = null,
+            BuyerName = string.Empty
+        };
+        editContext = new EditContext(obj);
+    }
+
+    void FilterTransactions(bool isOn, Guid typeId)
+    {
+        toggleStates[typeId] = isOn;
+
+        var activeTypeIds = toggleStates
+            .Where(kvp => kvp.Value)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        if (activeTypeIds.Any())
+        {
+            filteredRecentSales = recentSales
+                .Where(x => activeTypeIds.Contains(x.TransactionTypeId))
+                .ToList();
+        }
+        else
+        {
+            filteredRecentSales = recentSales.ToList(); // No filter
+        }
+    }
+}

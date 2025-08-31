@@ -1,0 +1,303 @@
+﻿@page "/weather"
+@attribute [Authorize]
+@inject IJSRuntime JSRuntime
+@inject WeatherService WeatherService
+@inject NlpService NlpService
+@inject SystemSettingService SystemSettingService
+@inject FarmService FarmService
+@inject AppNotificationService NotificationService
+@inject WebAppSettingService AppSettingService
+
+<PermissionView Permission="Weather.Full">
+    <ChildContent>
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="7">
+                <RadzenCard class="umh-section-header">
+                    <RadzenText TextStyle="TextStyle.H3" class="rz-text-upper rz-color-white">@city</RadzenText>
+                    <RadzenStack Orientation="Orientation.Horizontal" class="umh-text-muted-light rz-mb-5">
+                        <RadzenColumn class="rz-me-5">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="5">
+                                <RadzenIcon Icon="wb_sunny" /><RadzenText TextStyle="TextStyle.Caption" class="umh-text-muted-light umh-margin-0" title="Sunrise">@sunrise</RadzenText>
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn class="rz-me-5">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="5">
+                                <RadzenIcon Icon="wb_twilight" /><RadzenText TextStyle="TextStyle.Caption" class="umh-text-muted-light umh-margin-0" title="Sunset">@sunset</RadzenText>
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn class="rz-me-5">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="5">
+                                <RadzenIcon Icon="diversity_4" /><RadzenText TextStyle="TextStyle.Caption" class="umh-text-muted-light umh-margin-0" title="Total Population">@population.ToString("n0")</RadzenText>
+                            </RadzenStack>
+                        </RadzenColumn>
+                    </RadzenStack>
+                    <RadzenRow>
+                        @if (!isWeatherLoaded)
+                        {
+                            <p>Loading weather forecast...</p>
+                        }
+                    </RadzenRow>
+                    <RadzenRow>
+                        @if (!hasError1)
+                        {
+                            @foreach (var data in weatherForecastData)
+                            {
+                                <RadzenCard class="rz-color-white umh-mt-20px umh-bg-color-black ">
+                                    <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-mb-6 umh-text-muted-light">@data.Date.ToString("dddd, d MMMM yyyy")</RadzenText>
+                                    <RadzenRow>
+                                        <RadzenColumn>
+                                            <RadzenStack Orientation="Orientation.Vertical">
+                                                <RadzenImage Path="@($"https://openweathermap.org/img/wn/{data.Icon}@4x.png")" Width="100px" Height="100px" />
+                                            </RadzenStack>
+                                        </RadzenColumn>
+                                        <RadzenColumn>
+                                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0" class="rz-mt-3">
+                                                <RadzenText TextStyle="TextStyle.H2" TagName="TagName.H5" title="Average Temperature" class="umh-text-muted-light umh-fw-500">@(data.TempAverage.ToString("n0"))</RadzenText>
+                                                <RadzenText class="rz-color-white">°C</RadzenText>
+                                            </RadzenStack>
+                                        </RadzenColumn>
+                                    </RadzenRow>
+                                    <RadzenRow class="rz-mb-5">
+                                        <RadzenText TextStyle="TextStyle.H6" class="rz-text-capitalize rz-color-white">@data.Weather</RadzenText>
+                                    </RadzenRow>
+                                    <RadzenRow>
+                                        <RadzenColumn>
+                                            <RadzenStack Orientation="Orientation.Horizontal">
+                                                <RadzenIcon Icon="air" />
+                                                <RadzenText title="Wind Speed" class="umh-text-muted-light">@(data.WindSpeed.ToString("n1"))m/s</RadzenText>
+                                            </RadzenStack>
+                                            <RadzenStack Orientation="Orientation.Horizontal">
+                                                <RadzenIcon Icon="wind_power" />
+                                                <RadzenText title="Wind Gust" class="umh-text-muted-light">@(data.WindGust.ToString("n1"))m/s</RadzenText>
+                                            </RadzenStack>
+                                            <RadzenStack Orientation="Orientation.Horizontal">
+                                                <RadzenIcon Icon="swap_horiz" />
+                                                <RadzenText title="Wind Direction" class="umh-text-muted-light">@(data.WindDirection.ToString("n0"))° @(data.WindCardinalDirection)</RadzenText>
+                                            </RadzenStack>
+                                        </RadzenColumn>
+                                        <RadzenColumn>
+                                            <RadzenStack Orientation="Orientation.Horizontal">
+                                                <RadzenIcon Icon="humidity_percentage" />
+                                                <RadzenText title="Humidity" class="umh-text-muted-light">@(data.Humidity.ToString("n1"))%</RadzenText>
+                                            </RadzenStack>
+                                            <RadzenStack Orientation="Orientation.Horizontal">
+                                                <RadzenIcon Icon="cloud" />
+                                                <RadzenText title="Cloudiness" class="umh-text-muted-light">@(data.Cloudiness.ToString("n0"))%</RadzenText>
+                                            </RadzenStack>
+                                            @if (data.RainLast3H > 0)
+                                            {
+                                                <RadzenStack Orientation="Orientation.Horizontal">
+                                                    <RadzenIcon Icon="rainy" />
+                                                    <RadzenText title="Rain Volume for last 3hrs" class="umh-text-muted-light">@(data.RainLast3H.ToString("n0"))mm</RadzenText>
+                                                </RadzenStack>
+                                            }
+                                        </RadzenColumn>
+                                    </RadzenRow>
+                                </RadzenCard>
+                            }
+                        }
+                        else
+                        {
+                            <NoDataAvailable />
+                        }
+                    </RadzenRow>
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="5">
+                <RadzenCard class="umh-width-100 umh-padding-20px">
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" class="rz-mb-5">
+                        <RadzenIcon Icon="auto_awesome" />
+                        <RadzenText TextStyle="TextStyle.H6"> Weather Insights </RadzenText>
+                        <RadzenBadge Variant="Variant.Outlined" BadgeStyle="BadgeStyle.Primary" IsPill="@true" Text="Powered by OpenAI" class="umh-f-xx-small" />
+                    </RadzenStack>
+                    <ErrorBoundary>
+                        <ChildContent>
+                            @if (!isInsightLoaded)
+                            {
+                                <p>Analyzing weather data...</p>
+                            }
+                            @if (!hasError2)
+                            {
+                                <RadzenLabel class="umh-text-content">
+                                    @weatherDataAnalysis
+                                </RadzenLabel>
+                            }
+                            else
+                            {
+                                <NoDataAvailable />
+                            }
+                        </ChildContent>
+                        <ErrorContent>
+                            <NoDataAvailable />
+                        </ErrorContent>
+                    </ErrorBoundary>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    private WeatherData? weatherData;
+    private List<ForecastDailyWeather> weatherForecastData = new();
+    private bool isWeatherLoaded = false;
+    private bool isInsightLoaded = false;
+    private double lat;
+    private double lng;
+    private string weatherDataAnalysis = "";
+    private List<(string Section, List<string> Items)> parsedInsights = new();
+    private bool hasError1 = false;
+    private bool hasError2 = false;
+    private string city = "...";
+    private string sunrise = "0:0";
+    private string sunset = "0:0";
+    private int population = 0;
+    private Guid farmId;
+
+    private bool hasLoadedSecondaryData = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+            _ = Task.Run(async () =>
+            {
+                await LoadFarmDetails().ConfigureAwait(false);
+
+                //await FetchAndDisplayWeather().ConfigureAwait(false);
+                await FetchAndDisplayWeatherForecast().ConfigureAwait(false);
+                await AnalyzeWeatherData().ConfigureAwait(false);
+                //ParseWeatherAnalysis();
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        // await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
+        // farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
+
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Settings.FarmId;
+    }
+
+    async Task LoadFarmDetails()
+    {
+        var response = await FarmService.GetFarmByIdAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            var obj = response.Data;
+
+            lat = Convert.ToDouble(obj.Lat);
+            lng = Convert.ToDouble(obj.Lng);
+
+            StateHasChanged();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task FetchAndDisplayWeather()
+    {
+        var response = await WeatherService.GetWeatherDataAsync(lat, lng).ConfigureAwait(false);
+        if (response is not null)
+        {
+            if (response.IsSuccess)
+            {
+                weatherData = response.Data;
+                //await JSRuntime.InvokeVoidAsync("addCustomWeatherOverlay", lat, lon, weatherText);
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+            hasError1 = true;
+
+        isWeatherLoaded = true;
+        StateHasChanged();
+    }
+
+    private async Task FetchAndDisplayWeatherForecast()
+    {
+        var response = await WeatherService.GetWeatherForecastDataAsync(lat, lng).ConfigureAwait(false);
+        if (response is not null)
+        {
+            if (response.IsSuccess)
+            {
+                hasError1 = false;
+                weatherForecastData = response.Data;
+                city = $"{weatherForecastData.First().City}, {weatherForecastData.First().Country}";
+                sunrise = weatherForecastData.First().Sunrise;
+                sunset = weatherForecastData.First().Sunset;
+                population = weatherForecastData.First().Population;
+                //await JSRuntime.InvokeVoidAsync("addCustomWeatherOverlay", lat, lon, weatherText);
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+            hasError1 = true;
+
+        isWeatherLoaded = true;
+        StateHasChanged();
+    }
+
+    private async Task AnalyzeWeatherData()
+    {
+        string weatherDataJson = JsonSerializer.Serialize(weatherForecastData);
+        var response = await NlpService.AnalyzeWeatherDataAsync(weatherDataJson).ConfigureAwait(false);
+        if (response != null)
+        {
+            hasError2 = false;
+            weatherDataAnalysis = response;
+        }
+        else
+            hasError2 = true;
+
+        isInsightLoaded = true;
+        StateHasChanged();
+    }
+
+    private void ParseWeatherAnalysis()
+    {
+        var lines = weatherDataAnalysis.Split('\n');
+        string currentSection = "";
+        List<string> items = new();
+
+        foreach (var line in lines)
+        {
+            if (line.EndsWith(":"))
+            {
+                if (!string.IsNullOrEmpty(currentSection))
+                {
+                    parsedInsights.Add((currentSection, new List<string>(items)));
+                    items.Clear();
+                }
+                currentSection = line.TrimEnd(':');
+            }
+            else if (line.StartsWith("- "))
+            {
+                items.Add(line.Substring(2));
+            }
+        }
+
+        if (!string.IsNullOrEmpty(currentSection) && items.Count > 0)
+        {
+            parsedInsights.Add((currentSection, items));
+        }
+    }
+}

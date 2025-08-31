@@ -1,0 +1,76 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject NavigationManager Navigation
+@inject SignOutSessionStateManager SignOutManager
+@inject IJSRuntime JSRuntime
+@*@inject CustomAuthStateProvider AuthStateProvider
+@inject RolePermissionService RolePermissionService *@
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End">
+    @* <RadzenAppearanceToggle class="rz-mr-6" /> *@
+    <AuthorizeView>
+        <Authorized>
+            @{
+                var userIdentifier = GetUserIdentifier(context);
+            }
+            <div class="rz-display-none rz-display-sm-inline-flex align-items-center">
+                <RadzenText class="rz-color-white">@userIdentifier</RadzenText>
+            </div>
+            <RadzenProfileMenu @ref="profileMenu" Click="@OnMenuItemClick">
+                <Template>
+                    <RadzenGravatar Email="@userIdentifier">
+                    </RadzenGravatar>
+                </Template>
+                <ChildContent>
+                    <RadzenProfileMenuItem Text="Logout" Icon="logout" Value="logout"></RadzenProfileMenuItem>
+                </ChildContent>
+            </RadzenProfileMenu>
+        </Authorized>
+        <NotAuthorized>
+            <NavLink class="rz-link rz-text-nowrap rz-mx-2 rz-mx-lg-4" href="authentication/login" title="Login">
+                <RadzenBadge BadgeStyle="BadgeStyle.Secondary" IsPill=true Text="Login" Shade="Shade.Darker" />
+            </NavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+</RadzenStack>
+
+@code {
+    private RadzenProfileMenu profileMenu;
+
+    private async Task OnMenuItemClick(RadzenProfileMenuItem item)
+    {
+        if (item.Value == "logout")
+        {
+            //await AuthStateProvider.LogoutUserAsync();
+            await BeginSignOut();
+        }
+    }
+
+    private string GetUserIdentifier(AuthenticationState context)
+    {
+        // Try email first
+        var email = context.User.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+        if (!string.IsNullOrEmpty(email))
+            return email;
+
+        // Try cognito:username
+        var cognitoUsername = context.User.Claims.FirstOrDefault(c => c.Type == "cognito:username")?.Value;
+        if (!string.IsNullOrEmpty(cognitoUsername))
+            return cognitoUsername;
+
+        // Try name claim
+        var name = context.User.Identity?.Name;
+        if (!string.IsNullOrEmpty(name))
+            return name;
+
+        // Fallback
+        return "User";
+    }
+
+    private async Task BeginSignOut()
+    {
+        // await AuthStateProvider.LogoutUserAsync();
+        await SignOutManager.SetSignOutState();
+        Navigation.NavigateTo("authentication/logout");
+    }
+}

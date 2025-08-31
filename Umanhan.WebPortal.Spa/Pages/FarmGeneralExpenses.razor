@@ -1,0 +1,781 @@
+﻿@page "/general-expenses"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject FarmGeneralExpenseService FarmGeneralExpenseService
+@inject ExpenseTypeService ExpenseTypeService
+@inject TooltipService TooltipService
+@inject ReportService ReportService
+@inject IValidator<FarmGeneralExpenseDto> Validator
+
+<PermissionView Permission="Finance.Full">
+    <ChildContent>
+        <PageTitle>General Expenses</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/general-expenses" Text="General Expenses" />
+        </RadzenBreadCrumb>
+        <RadzenRow>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" class="rz-my-8">
+                <RadzenText TextStyle="TextStyle.H5">General Expenses</RadzenText>
+                <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@farmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(farmName))" />
+            </RadzenStack>
+            <div class="rz-ms-auto">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenCard Variant="Variant.Outlined" class="rz-mt-2 umh-badge">
+                        <RadzenText TextStyle="TextStyle.Caption">@activeRangeMessage</RadzenText>
+                    </RadzenCard>
+                    @if (showActiveRange)
+                    {
+                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Icon="filter_alt" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Lighter">
+                            <ChildContent>
+                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                <RadzenSplitButtonItem Text="Current Year" Value="CurrentYear" />
+                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                            </ChildContent>
+                        </RadzenSplitButton>
+                    }
+                    else
+                    {
+                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Variant="Variant.Text" Icon="filter_alt">
+                            <ChildContent>
+                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                <RadzenSplitButtonItem Text="Current Year" Value="CurrentYear" />
+                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                            </ChildContent>
+                        </RadzenSplitButton>
+                    }
+                </RadzenStack>
+            </div>
+        </RadzenRow>
+        <RadzenRow>
+            <RadzenColumn SizeMD="10">
+                <RadzenStack Orientation="Orientation.Horizontal" class="rz-mb-5">
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Year</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Total general expenses for the year."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                                <RadzenText TextStyle="TextStyle.H5" class="" title="@totalGenExpensesYear.Key.ToString("n2")">@totalGenExpensesYear.Value</RadzenText>
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                    <RadzenBadge Variant="Variant.Flat" BadgeStyle="BadgeStyle.Base" Text="PREV" title="Previous Year" />
+                                    <RadzenText TextStyle="TextStyle.Body2" class="" title="@totalGenExpensesYearPrev.Key.ToString("n2")">@totalGenExpensesYearPrev.Value</RadzenText>
+                                </RadzenStack>
+                            </RadzenStack>
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem" class="rz-ms-5">
+                                @if (totalGenExpensesYearDiff == 0)
+                                {
+                                    <RadzenIcon Icon="remove" IconColor="gray" />
+                                }
+                                else if (totalGenExpensesYearDiff > 0)
+                                {
+                                    <RadzenIcon Icon="arrow_upward" IconColor="green" />
+                                }
+                                else
+                                {
+                                    <RadzenIcon Icon="arrow_downward" IconColor="red" />
+                                }
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@totalGenExpensesYearDiff.ToString("p1")" />
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Quarter</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Total general expenses for this quarter."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                                <RadzenText TextStyle="TextStyle.H5" class="" title="@totalGenExpensesQuarter.Key.ToString("n2")">@totalGenExpensesQuarter.Value</RadzenText>
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                    <RadzenBadge Variant="Variant.Flat" BadgeStyle="BadgeStyle.Base" Text="PREV" title="Previous Quarter" />
+                                    <RadzenText TextStyle="TextStyle.Body2" class="" title="@totalGenExpensesQuarterPrev.Key.ToString("n2")">@totalGenExpensesQuarterPrev.Value</RadzenText>
+                                </RadzenStack>
+                            </RadzenStack>
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem" class="rz-ms-5">
+                                @if (totalGenExpensesQuarterDiff == 0)
+                                {
+                                    <RadzenIcon Icon="remove" IconColor="gray" />
+                                }
+                                else if (totalGenExpensesQuarterDiff > 0)
+                                {
+                                    <RadzenIcon Icon="arrow_upward" IconColor="green" />
+                                }
+                                else
+                                {
+                                    <RadzenIcon Icon="arrow_downward" IconColor="red" />
+                                }
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@totalGenExpensesQuarterDiff.ToString("p1")" />
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Month</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Total general expenses for the month."))" />
+                        </RadzenStack>
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal">
+                            <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Start">
+                                <RadzenText TextStyle="TextStyle.H5" class="" title="@totalGenExpensesMonth.Key.ToString("n2")">@totalGenExpensesMonth.Value</RadzenText>
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                    <RadzenBadge Variant="Variant.Flat" BadgeStyle="BadgeStyle.Base" Text="PREV" title="Previous Month" />
+                                    <RadzenText TextStyle="TextStyle.Body2" class="" title="@totalGenExpensesMonthPrev.Key.ToString("n2")">@totalGenExpensesMonthPrev.Value</RadzenText>
+                                </RadzenStack>
+                            </RadzenStack>
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Start" Gap="0.5rem" class="rz-ms-5">
+                                @if (totalGenExpensesMonthDiff == 0)
+                                {
+                                    <RadzenIcon Icon="remove" IconColor="gray" />
+                                }
+                                else if (totalGenExpensesMonthDiff > 0)
+                                {
+                                    <RadzenIcon Icon="arrow_upward" IconColor="green" />
+                                }
+                                else
+                                {
+                                    <RadzenIcon Icon="arrow_downward" IconColor="red" />
+                                }
+                                <RadzenText TextStyle="TextStyle.Body1" Text="@totalGenExpensesMonthDiff.ToString("p1")" />
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenCard>
+
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Normal" Gap="0.5rem">
+                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-mb-2 umh-height-25px">Trend</RadzenText>
+                            <RadzenIcon Icon="info" class="umh-f-medium-h-25px" MouseEnter="@(args => ShowTooltip(args, "Twelve-month trend for the current year."))" />
+                        </RadzenStack>
+
+                        <RadzenSparkline class="umh-width-100 umh-height-70px">
+                            <RadzenAreaSeries Smooth="false" Title="Curr" Data="@expensesSummaryList" Fill="#97dd47" Stroke="#7fab4d" CategoryProperty="@nameof(SparklineChartDto.MonthString)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                            <RadzenLineSeries Smooth="false" Title="Prev" LineType="LineType.Dashed" Data="@expensesSummaryListPrevious" CategoryProperty="@nameof(SparklineChartDto.MonthString)" ValueProperty="@nameof(SparklineChartDto.Total)" />
+                            <RadzenCategoryAxis Visible="false" />
+                            <RadzenLegend Visible="true" Position="LegendPosition.Bottom" />
+                        </RadzenSparkline>
+                    </RadzenCard>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="2">
+                <RadzenStack AlignItems="AlignItems.Start">
+                    <RadzenButton Icon="auto_awesome" class="ai-color rz-ms-auto" title="Generate insights" Click="@OpenSideDialog" />
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenRow>
+            <RadzenColumn SizeMD="8">
+                <RadzenCard Variant="Variant.Flat">
+                    <RadzenStack Orientation="Orientation.Vertical">
+                        <RadzenDataGrid @ref="expensesGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                        AllowSorting="true" PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left"
+                                        ShowPagingSummary="true" Data="@expensesList" ColumnWidth="160px" LogicalFilterOperator="LogicalFilterOperator.Or"
+                                        SelectionMode="DataGridSelectionMode.Single" EditMode="DataGridEditMode.Single" TItem="FarmGeneralExpenseDto"
+                                        RowUpdate="@OnUpdateRowGrid" RowCreate="@OnCreateRowGrid" RowSelect="@OnRowSelect" Sort="@ResetGrid"
+                                        Filter="@ResetGrid" class="umh-height-50vh" >
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                <RadzenButton Text="Add Expense" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@InsertRowGrid />
+                            </HeaderTemplate>
+                            <Columns>
+                                <RadzenDataGridColumn Context="contract" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right" Width="150px">
+                                    <Template Context="expense">
+                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowGrid(expense))" @onclick:stopPropagation="true" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid(expense))" @onclick:stopPropagation="true" />
+                                    </Template>
+                                    <EditTemplate Context="expense">
+                                        <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowGrid(expense))" aria-label="Save" />
+                                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditGrid(expense))" aria-label="Cancel" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid(expense))" aria-label="Delete" />
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Context="expense" Property="@nameof(FarmGeneralExpenseDto.ExpenseTypeName)" Title="Type" Width="300px">
+                                    <Template Context="expense">
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="@expenseTypes.FirstOrDefault(p => p.TypeId == expense.ExpenseTypeId)?.ExpenseTypeName" />
+                                    </Template>
+                                    <EditTemplate Context="expense">
+                                        <RadzenTemplateForm Data="@expense" EditContext="@GetEditContext(expense)">
+                                            <RadzenDropDown @bind-Value="@expense.ExpenseTypeId" Data=@expenseTypes TextProperty="ExpenseTypeName" Placeholder="Select type"
+                                                            ValueProperty="TypeId" class="umh-width-100" Name="TypeId" />
+                                            <ValidationMessage For="@(() => expense.ExpenseTypeId)" />
+                                        </RadzenTemplateForm>
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn Context="expense" Property="@nameof(FarmGeneralExpenseDto.Date)" Title="Date" Width="150px">
+                                    <Template Context="expense">
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Base" Text="@expense.Date.ToString("MM/dd/yyyy")" />
+                                    </Template>
+                                    <EditTemplate Context="expense">
+                                        <RadzenTemplateForm Data="@expense" EditContext="@GetEditContext(expense)">
+                                            <RadzenDatePicker @bind-Value="@expense.Date" ShowTime=false />
+                                            <ValidationMessage For="@(() => expense.Date)" />
+                                        </RadzenTemplateForm>
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn Context="expense" Property="@nameof(FarmGeneralExpenseDto.Amount)" Title="Amount" Width="200px" FormatString="{0:n2}" TextAlign="TextAlign.Right">
+                                    <EditTemplate Context="expense">
+                                        <RadzenTemplateForm Data="@expense" EditContext="@GetEditContext(expense)">
+                                            <RadzenNumeric @bind-Value="@expense.Amount" />
+                                            <ValidationMessage For="@(() => expense.Amount)" />
+                                        </RadzenTemplateForm>
+                                    </EditTemplate>
+                                    <FooterTemplate>
+                                        Total: <b>@expensesList.Sum(x => x.Amount).ToString("n2")</b>
+                                    </FooterTemplate>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="4">
+                @if (selectedObj != null)
+                {
+                    <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                        <RadzenStack Gap="1rem">
+                            <RadzenCard Variant="Variant.Text" class="rz-background-color-primary-lighter rz-color-on-primary-lighter">
+                                Expense: <b>@selectedObj?.Amount.ToString("n2")</b>
+                            </RadzenCard>
+                            <RadzenTabs>
+                                <Tabs>
+                                    <RadzenTabsItem Text="Details">
+                                        @if (isEditMode)
+                                        {
+                                            <RadzenStack Orientation="Orientation.Vertical" class="rz-mb-3">
+                                                <RadzenFormField Text="Payee" Variant="Variant.Flat">
+                                                    <RadzenTextBox @bind-Value="selectedObj.Payee" />
+                                                </RadzenFormField>
+                                            </RadzenStack>
+
+                                            <RadzenStack Orientation="Orientation.Vertical">
+                                                <RadzenFormField Text="Notes" Variant="Variant.Flat">
+                                                    <RadzenTextArea Rows="3" @bind-Value="selectedObj.Notes" />
+                                                </RadzenFormField>
+                                            </RadzenStack>
+                                        }
+                                        else
+                                        {
+                                            <RadzenStack Orientation="Orientation.Vertical" class="rz-mb-3">
+                                                <RadzenFormField Text="Payee" Variant="Variant.Filled">
+                                                    <RadzenTextBox @bind-Value="selectedObj.Payee" ReadOnly=true />
+                                                </RadzenFormField>
+                                            </RadzenStack>
+
+                                            <RadzenStack Orientation="Orientation.Vertical">
+                                                <RadzenFormField Text="Notes" Variant="Variant.Filled">
+                                                    <RadzenTextArea Rows="3" @bind-Value="selectedObj.Notes" ReadOnly=true />
+                                                </RadzenFormField>
+                                            </RadzenStack>
+                                        }
+                                    </RadzenTabsItem>
+                                </Tabs>
+                            </RadzenTabs>
+                        </RadzenStack>
+                    </RadzenCard>
+                }
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    private RadzenDataGrid<FarmGeneralExpenseDto> expensesGrid;
+
+    private List<FarmGeneralExpenseDto> expensesList = new();
+    private List<ExpenseTypeDto> expenseTypes = new();
+    private List<FarmGeneralExpenseDto> expenseItemToInsert = [];
+    private List<FarmGeneralExpenseDto> expenseItemToUpdate = [];
+
+    private Dictionary<FarmGeneralExpenseDto, EditContext> editContexts = new();
+    private Dictionary<EditContext, ValidationMessageStore> stores = new();
+
+    private IEnumerable<SparklineChartDto> expensesSummaryList;
+    private IEnumerable<SparklineChartDto> expensesSummaryListPrevious;
+
+    private FarmGeneralExpenseDto selectedObj = new();
+
+    private Guid farmId;
+    private string farmName = "Loading...";
+
+    private DateTime today = DateTime.Today;
+    private DateTime startDate;
+    private DateTime endDate;
+    private DateTime previousStartDate;
+    private DateTime previousEndDate;
+
+    private int currentYear;
+    private int previousYear;
+    private int currentMonth;
+    private int previousMonth;
+
+    private bool showActiveRange = false;
+    private string activeRangeMessage = "Loading general expenses...";
+    private bool hasLoadedSecondaryData = false;
+    private bool isSaving = false;
+    private bool isEditMode = false;
+
+    private KeyValuePair<decimal, string> totalGenExpensesYear = new KeyValuePair<decimal, string>(0, "0.00");
+    private KeyValuePair<decimal, string> totalGenExpensesYearPrev = new KeyValuePair<decimal, string>(0, "0.00");
+    private KeyValuePair<decimal, string> totalGenExpensesMonth = new KeyValuePair<decimal, string>(0, "0.00");
+    private KeyValuePair<decimal, string> totalGenExpensesMonthPrev = new KeyValuePair<decimal, string>(0, "0.00");
+    private KeyValuePair<decimal, string> totalGenExpensesQuarter = new KeyValuePair<decimal, string>(0, "0.00");
+    private KeyValuePair<decimal, string> totalGenExpensesQuarterPrev = new KeyValuePair<decimal, string>(0, "0.00");
+
+    private decimal totalGenExpensesYearDiff = 0;
+    private decimal totalGenExpensesMonthDiff = 0;
+    private decimal totalGenExpensesQuarterDiff = 0;
+
+    void ShowTooltip(ElementReference el, string tooltip) => TooltipService.Open(el, tooltip, new TooltipOptions { Duration = 5000 });
+
+    protected override async Task OnInitializedAsync()
+    {
+        LoadSettings();
+    }
+
+    protected override void OnParametersSet()
+    {
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+            _ = Task.Run(async () =>
+            {
+                SetThisMonth();
+                //     await LoadList().ConfigureAwait(false);
+                //     await LoadKpis().ConfigureAwait(false);
+                await LoadExpenseTypes().ConfigureAwait(false);
+                await LoadList().ConfigureAwait(false);
+
+                await Task.Delay(3000);
+                await LoadKpis().ConfigureAwait(false);
+
+                await Task.Delay(2000);
+                await LoadCharts().ConfigureAwait(false);
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+        }
+    }
+
+    void LoadSettings()
+    {
+        farmId = Settings.FarmId;
+        farmName = Settings.FarmName;
+    }
+
+    private async Task LoadList()
+    {
+        var response = await FarmGeneralExpenseService.GetFarmGeneralExpensesAsync(Settings.FarmId, startDate, endDate).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            expensesList = response.Data.ToList();
+            selectedObj = expensesList.FirstOrDefault();
+
+            showActiveRange = true;
+            activeRangeMessage = $"Showing general expenses from {startDate:MMM dd, yyyy} to {endDate:MMM dd, yyyy}";
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadKpis()
+    {
+        var response1 = await ReportService.GetFarmGeneralExpensesCurrentYearAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response1.IsSuccess)
+        {
+            totalGenExpensesYear = response1.Data;
+        }
+        var response2 = await ReportService.GetFarmGeneralExpensesPreviousYearAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response2.IsSuccess)
+        {
+            totalGenExpensesYearPrev = response2.Data;
+        }
+        var response3 = await ReportService.GetFarmGeneralExpensesCurrentMonthAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response3.IsSuccess)
+        {
+            totalGenExpensesMonth = response3.Data;
+        }
+        var response4 = await ReportService.GetFarmGeneralExpensesPreviousMonthAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response4.IsSuccess)
+        {
+            totalGenExpensesMonthPrev = response4.Data;
+        }
+        var response5 = await ReportService.GetFarmGeneralExpensesCurrentQuarterAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response5.IsSuccess)
+        {
+            totalGenExpensesQuarter = response5.Data;
+        }
+        var response6 = await ReportService.GetFarmGeneralExpensesPreviousQuarterAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response6.IsSuccess)
+        {
+            totalGenExpensesQuarterPrev = response6.Data;
+        }
+
+        if (totalGenExpensesYearPrev.Key != 0)
+        {
+            totalGenExpensesYearDiff = ((totalGenExpensesYear.Key - totalGenExpensesYearPrev.Key) / totalGenExpensesYearPrev.Key);
+        }
+
+        if (totalGenExpensesMonthPrev.Key != 0)
+        {
+            totalGenExpensesMonthDiff = ((totalGenExpensesMonth.Key - totalGenExpensesMonthPrev.Key) / totalGenExpensesMonthPrev.Key);
+        }
+
+        if (totalGenExpensesQuarterPrev.Key != 0)
+        {
+            totalGenExpensesQuarterDiff = ((totalGenExpensesQuarter.Key - totalGenExpensesQuarterPrev.Key) / totalGenExpensesQuarterPrev.Key);
+        }
+    }
+
+    async Task LoadCharts()
+    {
+        expensesSummaryList = await ReportService.Get12MonthExpensesSummaryListAsync(Settings.FarmId).ConfigureAwait(false);
+        expensesSummaryListPrevious = await ReportService.Get12MonthExpensesSummaryPreviousListAsync(Settings.FarmId).ConfigureAwait(false);
+    }
+
+    private EditContext GetEditContext(FarmGeneralExpenseDto expense)
+    {
+        if (!editContexts.TryGetValue(expense, out var context))
+        {
+            context = new EditContext(expense);
+            editContexts[expense] = context;
+        }
+        return context;
+    }
+
+    private async Task LoadExpenseTypes()
+    {
+        var response = await ExpenseTypeService.GetAllExpenseTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            expenseTypes = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void ResetGrid()
+    {
+        //Console.WriteLine("ResetGrid");
+        isEditMode = false;
+        expenseItemToInsert.Clear();
+        expenseItemToUpdate.Clear();
+    }
+
+    void ResetGrid(FarmGeneralExpenseDto expenseObj)
+    {
+        //Console.WriteLine("ResetGrid: " + JsonSerializer.Serialize(expenseObj));
+        isEditMode = false;
+        expenseItemToInsert.Remove(expenseObj);
+        expenseItemToUpdate.Remove(expenseObj);
+    }
+
+    async Task EditRowGrid(FarmGeneralExpenseDto expenseObj)
+    {
+        //Console.WriteLine("EditRowGrid: " + JsonSerializer.Serialize(expenseObj));
+        if (!expensesGrid.IsValid) return;
+
+        isEditMode = true;
+        expenseItemToUpdate.Add(expenseObj);
+        await expensesGrid.EditRow(expenseObj);
+    }
+
+    async Task OnUpdateRowGrid(FarmGeneralExpenseDto expenseObj)
+    {
+        //Console.WriteLine("OnUpdateRowGrid: " + JsonSerializer.Serialize(expenseObj));
+
+        if (!ValidateRow(expenseObj))
+            return;
+
+        var response = await FarmGeneralExpenseService.UpdateFarmGeneralExpenseAsync(expenseObj).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            int index = expensesList.FindIndex(p => p.RowKey == expenseObj.RowKey);
+            if (index != -1)
+            {
+                expensesList[index] = expenseObj;
+            }
+
+            await expensesGrid.Reload();
+            await NotificationService.ShowSuccess("Expense successfully updated.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Can't update expense right now.", "Oops");
+        }
+    }
+
+    async Task SaveRowGrid(FarmGeneralExpenseDto expenseObj)
+    {
+        //Console.WriteLine("SaveRowGrid: " + JsonSerializer.Serialize(expenseObj));
+
+        if (!ValidateRow(expenseObj))
+            return;
+
+        expenseObj.FarmId = farmId;
+        await expensesGrid.UpdateRow(expenseObj);
+    }
+
+    void CancelEditGrid(FarmGeneralExpenseDto expenseObj)
+    {
+        //Console.WriteLine("CancelEditGrid: " + JsonSerializer.Serialize(expenseObj));
+        isEditMode = false;
+        ResetGrid(expenseObj);
+        expensesGrid.CancelEditRow(expenseObj);
+    }
+
+    async Task DeleteRowGrid(FarmGeneralExpenseDto expenseObj)
+    {
+        //Console.WriteLine("DeleteRowGrid: " + JsonSerializer.Serialize(expenseObj));
+        ResetGrid(expenseObj);
+
+        if (expensesList.Contains(expenseObj))
+        {
+            var confirm = await DialogService.Confirm(
+                $"Are you sure you want to delete expense item?",
+                "Confirm Delete",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+            if (confirm == true)
+            {
+                var response = await FarmGeneralExpenseService.DeleteFarmGeneralExpenseAsync(expenseObj.ExpenseId).ConfigureAwait(false);
+                if (response.IsSuccess)
+                {
+                    expensesList.Remove(expenseObj);
+                    await expensesGrid.Reload();
+                    await NotificationService.ShowSuccess("Expense successfully deleted.");
+                }
+                else
+                {
+                    await NotificationService.ShowError("Can't delete expense right now.", "Oops");
+                }
+            }
+        }
+        else
+        {
+            expensesGrid.CancelEditRow(expenseObj);
+            await expensesGrid.Reload();
+        }
+    }
+
+    async Task InsertRowGrid()
+    {
+        //Console.WriteLine("InsertRowGrid");
+        if (!expensesGrid.IsValid) return;
+
+        isEditMode = true;
+        selectedObj = new FarmGeneralExpenseDto();
+        selectedObj.FarmId = farmId;
+        expenseItemToInsert.Add(selectedObj);
+
+        await expensesGrid.InsertRow(selectedObj);
+    }
+
+    async Task InsertAfterRowGrid(FarmGeneralExpenseDto row)
+    {
+        //Console.WriteLine("InsertAfterRowGrid: " + JsonSerializer.Serialize(row));
+
+        if (!expensesGrid.IsValid) return;
+
+        var expenseObj = new FarmGeneralExpenseDto();
+        expenseObj.FarmId = farmId;
+        expenseItemToInsert.Add(expenseObj);
+
+        await expensesGrid.InsertAfterRow(expenseObj, row);
+    }
+
+    async Task OnCreateRowGrid(FarmGeneralExpenseDto expenseObj)
+    {
+        //Console.WriteLine("OnCreateRowGrid: " + JsonSerializer.Serialize(expenseObj));
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        expenseObj.FarmId = farmId;
+        var response = await FarmGeneralExpenseService.CreateFarmGeneralExpenseAsync(expenseObj).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            expensesList.Add(expenseObj);
+            ResetGrid();
+            await NotificationService.ShowSuccess("Expense successfully created.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Can't create expense right now.", "Oops");
+        }
+        isSaving = false;
+        expenseItemToInsert.Remove(expenseObj);
+
+        DialogService.Close(true);
+    }
+
+    async Task OnRowSelect(FarmGeneralExpenseDto expenseObj)
+    {
+        //ResetGrid();
+
+        //Console.WriteLine("OnRowSelect: " + JsonSerializer.Serialize(expenseObj));
+        selectedObj = expenseObj;
+        // if (expenseObj != null)
+        // {
+        //     var editContext = GetEditContext(expenseObj);
+        //     if (!stores.TryGetValue(editContext, out var store))
+        //     {
+        //         store = new ValidationMessageStore(editContext);
+        //         stores[editContext] = store;
+        //     }
+        //     store.Clear();
+        //     editContext.NotifyValidationStateChanged();
+        // }
+    }
+
+    bool ValidateRow(FarmGeneralExpenseDto expense)
+    {
+        var editContext = GetEditContext(expense);
+
+        if (!stores.TryGetValue(editContext, out var store))
+        {
+            store = new ValidationMessageStore(editContext);
+            stores[editContext] = store;
+        }
+        store.Clear();
+
+        var result = Validator.Validate(expense);
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                store.Add(editContext.Field(error.PropertyName), error.ErrorMessage);
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task OnPresetClicked(RadzenSplitButtonItem item)
+    {
+        if (item == null)
+        {
+            SetThisMonth();
+            return;
+        }
+
+        activeRangeMessage = "Please wait...";
+
+        previousStartDate = startDate;
+        previousEndDate = endDate;
+
+        //Console.WriteLine($"previousStartDate: {previousStartDate}");
+        //Console.WriteLine($"previousEndDate: {previousEndDate}");
+        //Console.WriteLine($"item.Value: {item.Value}");
+
+        switch (item.Value)
+        {
+            case "Last6Months":
+                var last6Months = today.AddMonths(-6);
+                startDate = new DateTime(last6Months.Year, last6Months.Month, 1);
+                endDate = new DateTime(today.Year, today.Month, 1).AddDays(-1);
+                break;
+
+            case "CurrentYear":
+                startDate = new DateTime(today.Year, 1, 1);
+                endDate = new DateTime(today.Year, 12, 31);
+                break;
+
+            case "LastYear":
+                startDate = new DateTime(today.Year - 1, 1, 1);
+                endDate = new DateTime(today.Year - 1, 12, 31);
+                break;
+
+            case "Custom":
+                var result = await DialogService.OpenAsync<CustomDateRangeDialog>("Custom Date Range",
+                    new Dictionary<string, object>()
+                    {
+                        { "AllowFuture", true }
+                    },
+                    new DialogOptions() { Width = "400px", Height = "350px" });
+
+                if (result is ValueTuple<DateOnly, DateOnly> range)
+                {
+                    startDate = range.Item1.ToDateTime(TimeOnly.MinValue);
+                    endDate = range.Item2.ToDateTime(TimeOnly.MinValue);
+                }
+                break;
+
+            default:
+                //"ThisMonth":
+                SetThisMonth();
+                break;
+        }
+
+        await TryReloadList().ConfigureAwait(false);
+    }
+
+    void SetThisMonth()
+    {
+        startDate = new DateTime(today.Year, today.Month, 1);
+        endDate = startDate.AddMonths(1).AddDays(-1);
+    }
+
+    async Task TryReloadList()
+    {
+        //Console.WriteLine("TryReloadList");
+        if (startDate != previousStartDate || endDate != previousEndDate)
+        {
+            //Console.WriteLine("startDate != previousStartDate || endDate != previousEndDate");
+            //previousStartDate = startDate;
+            //previousEndDate = endDate;
+
+            await LoadList().ConfigureAwait(false);
+            //await LoadKpis().ConfigureAwait(false);
+            //await LoadCharts().ConfigureAwait(false);
+        }
+    }
+
+    async Task OpenSideDialog()
+    {
+        string title = "Expense Data Analysis";
+        string prompt = "Analyze the farm general expense data and provide insights on trends, possible impact on revenue, and recommend possible ways to trim down expenses.";
+
+        var data = new
+        {
+            TotalGeneralExpensesCurrent = totalGenExpensesYear.Key,
+            TotalGeneralExpensesPrevious = totalGenExpensesYearPrev.Key,
+            TotalGeneralExpensesDifference = totalGenExpensesYearDiff,
+            ExpenseSummaryCurrent = expensesSummaryList,
+            ExpenseSummaryPrevious = expensesSummaryListPrevious
+        };
+        string jsonData = System.Text.Json.JsonSerializer.Serialize(data);
+        //Console.WriteLine($"OpenSideDialog.jsonData: {jsonData}");
+
+        await DialogService.OpenSideAsync<DataInsightSideDialog>("Data Insight",
+        parameters: new Dictionary<string, object>
+        {
+            { "JsonData", jsonData },
+            { "Prompt", prompt },
+            { "Title", title }
+        },
+        options: new SideDialogOptions
+        {
+            CloseDialogOnOverlayClick = true,
+            Position = DialogPosition.Right,
+            ShowMask = false
+        });
+    }
+}

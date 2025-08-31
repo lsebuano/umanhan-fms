@@ -1,0 +1,10 @@
+﻿
+<RadzenStack AlignItems="AlignItems.Center" Gap="2rem" class="rz-p-12">
+    <RadzenImage Path="images/OFJWB80.jpg" class="umh-width-200px" AlternateText="busy" />
+    @* <LottiePlayerComponent AutoPlay="true" Loop="true" Source="animations/plant-loading.json"/> *@
+    <RadzenText TextStyle="TextStyle.H6">@Message</RadzenText>
+</RadzenStack>
+
+@code {
+    [Parameter] public string Message { get; set; } = "Farmer's busy, please wait...";
+}

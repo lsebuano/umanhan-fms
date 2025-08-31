@@ -1,0 +1,112 @@
+﻿@inject DialogService DialogService
+@inject FarmZoneService FarmZoneService
+@inject AppNotificationService NotificationService
+@inject IValidator<FarmZoneDto> Validator
+
+<RadzenTemplateForm TItem="FarmZoneDto" Data="@obj" Submit="SaveChanges">
+    <RadzenStack>
+        <FluentValidationValidator Validator="@Validator" />
+
+        <RadzenFormField Text="Name" Variant="Variant.Text">
+            <RadzenTextBox @bind-Value="obj.ZoneName" />
+        </RadzenFormField>
+        <ValidationMessage For="@(() => obj.ZoneName)" />
+
+        <RadzenFormField Text="Lat" Variant="Variant.Text">
+            <RadzenNumeric @bind-Value="obj.ZoneCentroidLat" Rows="4"></RadzenNumeric>
+        </RadzenFormField>
+        <ValidationMessage For="@(() => obj.ZoneCentroidLat)" />
+
+        <RadzenFormField Text="Lng" Variant="Variant.Text">
+            <RadzenNumeric @bind-Value="obj.ZoneCentroidLng" Rows="4"></RadzenNumeric>
+        </RadzenFormField>
+        <ValidationMessage For="@(() => obj.ZoneCentroidLng)" />
+    </RadzenStack>
+    <RadzenFooter>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+            <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+            <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+        </RadzenStack>
+    </RadzenFooter>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; }
+    private FarmZoneDto obj;
+    private EditContext editContext;
+    private bool isSaving;
+    private string mode = "Add";
+    private string title = "Message";
+    private string message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (obj == null)
+        {
+            obj = new FarmZoneDto();
+        }
+        // initialize the context
+        editContext = new EditContext(obj);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        // await LoadObj().ConfigureAwait(false);
+        // update the context
+        editContext = new EditContext(obj);
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            FarmZoneDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await FarmZoneService.CreateFarmZoneAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await FarmZoneService.UpdateFarmZoneAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                isSuccess = true;
+                message = "Save successful.";
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+}

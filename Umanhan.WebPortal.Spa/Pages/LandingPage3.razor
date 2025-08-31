@@ -1,0 +1,125 @@
+﻿@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="css/landing-page-3.css" rel="stylesheet" />
+
+<!-- Hero Section -->
+<section class="hero text-center @heroBackgroundClass">
+    <div class="container">
+        <h1 class="display-4 fw-bold poppins-semibold">umanhan FMS</h1>
+        <p class="lead mb-4">Plan. Plant. Track. <strong>Smart Farming Starts Here.</strong></p>
+        @* <a href="#features" class="btn btn-primary btn-lg me-2">Explore Features</a> *@
+        <RadzenButton Text="Explore Features"
+                      Click="@(() => ScrollToElement("features"))"
+                      class="umh-me-1rem"
+                      Size="ButtonSize.Large"
+                      ButtonStyle="ButtonStyle.Primary" />
+        <RadzenButton Text="Get Started"
+                      Click="@(() => NavigationManager.NavigateTo("/authentication/login"))"
+                      Size="ButtonSize.Large"
+                      Variant="Variant.Outlined"
+                      ButtonStyle="ButtonStyle.Light" />
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-5">
+    <div class="container text-center">
+        <h2 class="mb-5">Key Features</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <i class="fa-solid fa-seedling feature-icon mb-3"></i>
+                <h5>Activity Planner</h5>
+                <p>Schedule planting, fertilizing, irrigation, and harvesting with ease.</p>
+            </div>
+            <div class="col-md-4">
+                <i class="fa-solid fa-chart-line feature-icon mb-3"></i>
+                <h5>Farm Analytics</h5>
+                <p>Monitor yield, sales, and expenses through visual dashboards and KPIs.</p>
+            </div>
+            <div class="col-md-4">
+                <i class="fa-solid fa-map feature-icon mb-3"></i>
+                <h5>Interactive Farm Map</h5>
+                <p>Visualize farm zones on an intuitive map interface.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Benefits Section -->
+<section class="py-5 bg-light">
+    <div class="container text-center">
+        <h2 class="mb-4">Why Choose umanhan FMS?</h2>
+        <div class="row g-4">
+            <div class="col-md-3">
+                <i class="fa-solid fa-cloud feature-icon mb-2"></i>
+                <h6>Cloud-Enabled</h6>
+                <p>Access your farm anytime, anywhere.</p>
+            </div>
+            <div class="col-md-3">
+                <i class="fa-solid fa-lock feature-icon mb-2"></i>
+                <h6>Secure</h6>
+                <p>Role-based access with data encryption and backups.</p>
+            </div>
+            <div class="col-md-3">
+                <i class="fa-solid fa-users feature-icon mb-2"></i>
+                <h6>Team Collaboration</h6>
+                <p>Invite workers, assign tasks, and collaborate on farm operations.</p>
+            </div>
+            <div class="col-md-3">
+                <i class="fa-solid fa-wind feature-icon mb-2"></i>
+                <h6>Smart Weather Forecasting</h6>
+                <p>Receive AI-powered insights based on rainfall, temperature, and wind conditions.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call To Action -->
+<section class="py-5 text-center rz-background-color-secondary rz-color-secondary-darker">
+    <div class="container">
+        <h2 class="mb-3">Already have an account? Start managing your farm now.</h2>
+        <RadzenButton Icon="login" Text="Log in to your dashboard"
+                      Click="@(() => NavigationManager.NavigateTo("/authentication/login"))" 
+                      ButtonStyle="ButtonStyle.Light"
+                      Size="ButtonSize.Large"
+                      Variant="Variant.Flat" />
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="text-center">
+    <div class="container">
+        <p class="mb-1">&copy; 2025 umanhan FMS. All rights reserved.</p>
+        <small>Made smart for Filipino farmers .</small>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+@code {
+    private string heroBackgroundClass = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var images = new[] {
+            "hero_image_1.webp",
+            "hero_image_2.webp",
+            "hero_image_3.webp",
+            "hero_image_4.webp",
+            "hero_image_5.webp"
+        };
+
+        var random = new Random();
+        var selected = images[random.Next(images.Length)];
+
+        heroBackgroundClass = $"hero-bg-{Path.GetFileNameWithoutExtension(selected)}";
+    }
+
+    private async Task ScrollToElement(string elementId)
+    {
+        await JS.InvokeVoidAsync("scrollToElementById", elementId);
+    }
+}

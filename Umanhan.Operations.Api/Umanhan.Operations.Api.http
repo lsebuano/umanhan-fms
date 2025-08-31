@@ -1,0 +1,6 @@
+@Umanhan.Operations.Api_HostAddress = https://localhost:7025
+
+GET {{Umanhan.Operations.Api_HostAddress}}/api/categories
+Accept: application/json
+
+###

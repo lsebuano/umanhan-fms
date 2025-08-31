@@ -1,0 +1,85 @@
+﻿@inject NavigationManager NavigationManager
+@inject FarmActivityService FarmActivityService
+@inject AppNotificationService NotificationService
+
+<RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Normal" JustifyContent="JustifyContent.Start">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+        <RadzenIcon Icon="agriculture" />
+        <RadzenText TextStyle="TextStyle.H6" class="umh-margin-0">Farm Activities</RadzenText>
+    </RadzenStack>
+
+    @{
+        if (top5FarmActivities.Any())
+        {
+            foreach (var item in top5FarmActivities)
+            {
+                string active = "";
+                string activeStyle = "umh-cursor-pointer ";
+                // check if current date is between start and end date
+                if ((item.StartDateTime <= today &&
+                (item.EndDateTime == null || item.EndDateTime >= today)))
+                {
+                    active = "Active";
+                    activeStyle += " umh-gradient-yellow";
+                }
+
+                <RadzenCard Variant="Variant.Flat" class="@activeStyle" title="@active" @onclick="@(() => GoToActivity(item.ActivityId))">
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-display-flex rz-mt-2 rz-mb-2">@item.Task</RadzenText>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                        <RadzenIcon Icon="calendar_month" />
+                        <RadzenText TextStyle="TextStyle.Caption" class="umh-margin-0">@item.StartDateTime.ToString("MM/dd/yyyy") - @item.EndDateTime?.ToString("MM/dd/yyyy")</RadzenText>
+                    </RadzenStack>
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                        <RadzenIcon Icon="person" />
+                        <RadzenText TextStyle="TextStyle.Caption" title="Supervisor" class="umh-margin-0">@item.Supervisor</RadzenText>
+                    </RadzenStack>
+                </RadzenCard>
+            }
+            <RadzenLink Path="/farm-activities" Text="See all activities" class="umh-text-color-info-dark" />
+        }
+        else
+        {
+            <RadzenCard Variant="Variant.Flat">
+                <RadzenText TextStyle="TextStyle.Body1" class="">@activitiesLoading</RadzenText>
+            </RadzenCard>
+
+            <RadzenLink Path="/farm-activities?ActivityId=&Mode=add" Text="Create new activity" class="umh-text-color-info-dark" />
+        }
+    }
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid FarmId { get; set; }
+
+    private IEnumerable<FarmActivityDto> top5FarmActivities = [];
+
+    private string activitiesLoading = "Loading farm activities...";
+    private DateTime today = DateTime.Today.ToLocalTime();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFarmActivities().ConfigureAwait(false);
+    }
+
+    async Task LoadFarmActivities()
+    {
+        var response = await FarmActivityService.GetFarmActivitiesAsync(FarmId, today).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            top5FarmActivities = response.Data.Take(5);
+            if (!top5FarmActivities.Any())
+                activitiesLoading = "No activities for today";
+        }
+        else
+        {
+            activitiesLoading = "No activities for today";
+            //await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+    }
+
+    void GoToActivity(Guid activityId)
+    {
+        var qs = $"?ActivityId={activityId}";
+        NavigationManager.NavigateTo($"/farm-activities{qs}");
+    }
+}

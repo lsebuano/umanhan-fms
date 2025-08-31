@@ -1,0 +1,212 @@
+﻿@* @using Newtonsoft.Json *@
+@inject DialogService DialogService
+@inject FarmService FarmService
+@inject AppNotificationService NotificationService
+@inject NavigationManager NavigationManager
+@inject IValidator<FarmDto> Validator
+@inject WebAppSettingService AppSettingService
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenRow>
+        <RadzenColumn Size="7" SizeMD="7" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+            <RadzenTemplateForm TItem="FarmDto" Data="@obj" Submit="@SaveChanges">
+                <RadzenStack>
+                    <FluentValidationValidator Validator="@Validator" />
+
+                    <RadzenFormField Text="Farm" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.FarmName" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.FarmName)" />
+
+                    <RadzenFormField Text="Owner" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.OwnerName" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.OwnerName)" />
+
+                    <RadzenFormField Text="Location" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.Location" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Location)" />
+
+                    <RadzenFormField Text="Latitude" Variant="Variant.Text">
+                        <RadzenNumeric @bind-Value="obj.Lat" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Lat)" />
+
+                    <RadzenFormField Text="Longitude" Variant="Variant.Text">
+                        <RadzenNumeric @bind-Value="obj.Lng" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Lng)" />
+
+                    <RadzenFormField Text="Size (Hectares)" Variant="Variant.Text">
+                        <RadzenNumeric @bind-Value="obj.SizeInHectares" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.SizeInHectares)" />
+
+                    <RadzenFormField Text="Notes" Variant="Variant.Text">
+                        <RadzenTextArea @bind-Value="obj.Notes" Rows="4" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.Notes)" />
+                </RadzenStack>
+
+                <RadzenRow AlignItems="AlignItems.Normal">
+                    <RadzenColumn Size="6">
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Left" class="rz-mt-10">
+                            <RadzenButton Text="Go to Farm Setup" ButtonStyle="ButtonStyle.Light" Click="@(() => GoToFarmMap())" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                    <RadzenColumn Size="6">
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Right" class="rz-mt-10">
+                            <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                            <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                        </RadzenStack>
+                    </RadzenColumn>
+                </RadzenRow>
+            </RadzenTemplateForm>
+        </RadzenColumn>
+        <RadzenColumn Size="5" SizeMD="5">
+            <RadzenStack>
+                <RadzenFormField Text="Setup Started" Variant="Variant.Filled">
+                    <RadzenTextBox Value="@obj.SetupStartedString" ReadOnly="true" />
+                </RadzenFormField>
+                <RadzenFormField Text="Setup Complete" Variant="Variant.Filled">
+                    <RadzenTextBox Value="@obj.SetupCompleteString" ReadOnly="true" />
+                </RadzenFormField>
+                <RadzenFormField Text="Boundary (JSON)" Variant="Variant.Filled">
+                    <RadzenTextArea Value="@obj.BoundaryJson" Rows="8" ReadOnly="true" />
+                </RadzenFormField>
+                <RadzenFormField Text="Static Map URL" Variant="Variant.Filled">
+                    <RadzenTextArea Value="@obj.StaticMapUrl" Rows="6" ReadOnly="true" />
+                </RadzenFormField>
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => DialogService.Close(true))" Variant="Variant.Flat" Text="Close" class="umh-width-120px" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+    [Parameter] public Guid ObjId { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+
+    private Guid objId;
+    private string mode = "Add";
+    private FarmDto obj;
+    private string title = "Message";
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        objId = ObjId;
+        if (obj == null)
+        {
+            obj = new FarmDto();
+        }
+        await LoadObj().ConfigureAwait(false);
+        // initialize the context
+        editContext = new EditContext(obj);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        //await LoadObj().ConfigureAwait(false);
+        // update the context
+        //editContext = new EditContext(obj);
+        if (ObjId != objId)
+        {
+            objId = ObjId;
+            await LoadObj().ConfigureAwait(false);
+            editContext = new EditContext(obj);
+        }
+    }
+
+    private async Task LoadObj()
+    {
+        if (!ObjId.Equals(Guid.Empty))
+        {
+            mode = "Edit";
+            var response = await FarmService.GetFarmByIdAsync(ObjId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            mode = "Add";
+            obj = new FarmDto();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            FarmDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await FarmService.CreateFarmAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await FarmService.UpdateFarmAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+
+                Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+                // Console.WriteLine($"Settings: {JsonConvert.SerializeObject(Settings)}");
+
+                StateHasChanged();
+
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+
+    void GoToFarmMap()
+    {
+        NavigationManager.NavigateTo($"/farm-map/{ObjId}", false);
+    }
+}

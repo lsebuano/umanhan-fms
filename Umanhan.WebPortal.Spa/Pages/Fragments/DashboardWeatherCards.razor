@@ -1,0 +1,141 @@
+﻿@inject WeatherService WeatherService
+@inject NlpService NlpService
+@inject AppNotificationService NotificationService
+@inject IJSRuntime JSRuntime
+
+<RadzenRow class="rz-mb-5">
+    <RadzenColumn SizeMD="12">
+        <RadzenCard Variant="Variant.Flat">
+            <div class="umh-pos-relative-h-380px">
+                <div class="umh-gradient-header">
+                    <RadzenRow class="rz-mb-5">
+                        <RadzenColumn SizeMD="9">
+                            <RadzenStack Orientation="Orientation.Horizontal">
+                                <RadzenIcon Icon="location_on" class="umh-f-medium" />
+                                <RadzenText TextStyle="TextStyle.Caption">@FarmLocation</RadzenText>
+                                <RadzenButton Icon="air" title="See Wind Map" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => OpenWindMapExternalLink())" />
+                            </RadzenStack>
+                        </RadzenColumn>
+                        <RadzenColumn SizeMD="3">
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End">
+                                <RadzenText TextStyle="TextStyle.Caption" title="Today">@dateToday</RadzenText>
+                            </RadzenStack>
+                        </RadzenColumn>
+                    </RadzenRow>
+                    <RadzenRow>
+                        <RadzenStack Orientation="Orientation.Vertical">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                                <RadzenStack Orientation="Orientation.Horizontal">
+                                    <RadzenText TextStyle="TextStyle.H3" class="umh-mb-0">@currentWeatherData.TempAverage.ToString("n0")</RadzenText>
+                                    <RadzenText class="umh-ml-n15px">°C</RadzenText>
+                                </RadzenStack>
+                                @if (!string.IsNullOrEmpty(currentWeatherData.Icon))
+                                {
+                                    <RadzenImage Path="@($"https://openweathermap.org/img/wn/{currentWeatherData.Icon}@4x.png")" class="umh-h70px-w70px-mt-n1rem"/>
+                                }
+                            </RadzenStack>
+                            <RadzenText TextStyle="TextStyle.Body1" class="rz-text-capitalize"><strong>@currentWeatherData.Weather</strong></RadzenText>
+
+                            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" class="rz-color-base-600">
+                                <RadzenIcon Icon="auto_awesome" />
+                                <RadzenText TextStyle="TextStyle.Subtitle2" class="umh-max-width-20rem">@currentWeatherHeadline</RadzenText>
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenRow>
+                </div>
+                <div class="umh-absolute-full-top">
+                    <RadzenImage Path="@FarmStaticMapUrl" class="umh-width-100" />
+                </div>
+            </div>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+<RadzenRow class="rz-mb-5">
+    @{
+        if (top3WeatherForecastData.Any())
+        {
+            foreach (var data in top3WeatherForecastData)
+            {
+                <RadzenColumn SizeMD="4">
+                    <RadzenCard Variant="Variant.Flat">
+                        <RadzenStack Orientation="Orientation.Vertical">
+                            <RadzenImage Path="@($"https://openweathermap.org/img/wn/{currentWeatherData.Icon}@4x.png")" class="umh-h60px-w60px" />
+                            <RadzenText TextStyle="TextStyle.H3">@data.TempAverage.ToString("n0") °C</RadzenText>
+                            <RadzenText TextStyle="TextStyle.H6" class="rz-text-capitalize">@data.Weather</RadzenText>
+                            <RadzenText TextStyle="TextStyle.Body2">@data.Date.ToString("dddd")</RadzenText>
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenColumn>
+            }
+            <RadzenLink Path="/weather" Text="See all forecasts" class="umh-text-color-info-dark" />
+        }
+        else
+        {
+            <RadzenCard Variant="Variant.Flat">
+                <RadzenStack Orientation="Orientation.Vertical">
+                    <RadzenText TextStyle="TextStyle.Body1">@weatherLoading</RadzenText>
+                </RadzenStack>
+            </RadzenCard>
+        }
+    }
+</RadzenRow>
+
+@code {
+    [Parameter] public double FarmLat { get; set; }
+    [Parameter] public double FarmLng { get; set; }
+    [Parameter] public string FarmLocation { get; set; }
+    [Parameter] public string FarmStaticMapUrl { get; set; }
+
+    private IEnumerable<ForecastDailyWeather> top3WeatherForecastData = [];
+
+    private string dateToday;
+    private DateTime today = DateTime.Today.ToLocalTime();
+    private ForecastDailyWeather currentWeatherData = new();
+    private string weatherLoading = "Loading weather data...";
+    private string currentWeatherHeadline = "Analyzing current weather...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchAndDisplayWeatherForecast().ConfigureAwait(false);
+        await Task.Delay(3000);
+        await GenerateWeatherHeadline().ConfigureAwait(false);
+    }
+
+    private async Task FetchAndDisplayWeatherForecast()
+    {
+        var response = await WeatherService.GetWeatherForecastDataAsync(FarmLat, FarmLng).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            top3WeatherForecastData = response.Data.Skip(1).Take(3); // skip today
+            currentWeatherData = response.Data.FirstOrDefault(); // get today
+            //StateHasChanged();
+        }
+        else
+        {
+            weatherLoading = "No weather data available";
+            //await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+    }
+
+    private async Task GenerateWeatherHeadline()
+    {
+        if (FarmLat != 0 && FarmLng != 0)
+        {
+            currentWeatherHeadline = await NlpService.GenerateWeatherHeadlineAsync(currentWeatherData.Date,
+                currentWeatherData.City,
+                currentWeatherData.TempAverage,
+                currentWeatherData.TempMin,
+                currentWeatherData.TempMax,
+                currentWeatherData.Humidity,
+                currentWeatherData.WindSpeed,
+                currentWeatherData.WindDirection,
+                currentWeatherData.WindGust).ConfigureAwait(false);
+        }
+    }
+
+    async Task OpenWindMapExternalLink()
+    {
+        string url = $"https://earth.nullschool.net/#current/wind/surface/level/orthographic={FarmLng},{FarmLat},3908";
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+}

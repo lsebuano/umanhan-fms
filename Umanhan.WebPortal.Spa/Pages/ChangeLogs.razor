@@ -1,0 +1,128 @@
+﻿@page "/change-logs"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject ChangeLogService ChangeLogService
+
+<PermissionView Permission="Log.Read">
+    <ChildContent>
+        <PageTitle>Change Logs</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/change-logs" Text="Change Logs" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Change Logs</RadzenText>
+
+        @if (objList == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <RadzenRow>
+                <RadzenColumn Size="12" SizeMD="5">
+                    <div class="full-height-container">
+                        <RadzenDataGrid @ref="changeLogsGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                        AllowSorting="true" PagerHorizontalAlign="HorizontalAlign.Left" Data="@objList" GridLines="DataGridGridLines.Vertical"
+                                        ColumnWidth="100%" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                        @bind-Value=@selectedObjList IsLoading=@isLoading Page="@ShowLoading" class="umh-height-70vh">
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" AlignItems="AlignItems.Center" Gap="0.5rem" class="">
+                                    <RadzenLabel Text="Select Date" Component="DateFilter" />
+                                    <RadzenDatePicker @bind-Value=@date Name="DateFilter" ShowCalendarWeek ShowTime=false CurrentDateChanged="@OnDateFilterChange" ShowDays=false DateFormat="MMM yyyy" />
+                                </RadzenStack>
+                            </HeaderTemplate>
+                            <Columns>
+                                <RadzenDataGridColumn Property="@nameof(ChangeLogDto.Timestamp)" Title="Timestamp" Frozen="false" Width="150px" />
+                                <RadzenDataGridColumn Property="@nameof(ChangeLogDto.Username)" Title="Username" Frozen="false" Width="200px" />
+                                <RadzenDataGridColumn Property="@nameof(ChangeLogDto.Type)" Title="Type" Frozen="false" Width="100px" />
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="7">
+                    <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                        <RadzenTabs>
+                            <Tabs>
+                                <RadzenTabsItem Text="Details">
+                                    <RadzenStack Gap="1rem">
+                                        <RadzenCard Variant="Variant.Text">
+                                            <RadzenStack Gap="0">
+                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Entity</RadzenText>
+                                                <RadzenText TextStyle="TextStyle.Body1">@(selectedObjList.FirstOrDefault()?.Entity)</RadzenText>
+
+                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Entity Id</RadzenText>
+                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.EntityId)</RadzenText>
+
+                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Field</RadzenText>
+                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Field)</RadzenText>
+
+                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Old Value</RadzenText>
+                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.OldValue)</RadzenText>
+
+                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">New Value</RadzenText>
+                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.NewValue)</RadzenText>
+                                            </RadzenStack>
+                                        </RadzenCard>
+                                    </RadzenStack>
+                                </RadzenTabsItem>
+                            </Tabs>
+                        </RadzenTabs>
+                    </RadzenCard>
+                </RadzenColumn>
+            </RadzenRow>
+        }
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    RadzenDataGrid<ChangeLogDto> changeLogsGrid;
+
+    private IEnumerable<ChangeLogDto>? objList;
+    private IList<ChangeLogDto> selectedObjList;
+    private bool isLoading;
+    private DateOnly date = DateOnly.FromDateTime(DateTime.Now);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync().ConfigureAwait(false);
+        await ShowLoading().ConfigureAwait(false);
+        await LoadList().ConfigureAwait(false);
+    }
+
+    private async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    private async Task LoadList(Guid? changeId = null)
+    {
+        var response = await ChangeLogService.GetChangeLogsAsync(date).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            objList = response.Data;
+            if (changeId != null || changeId != Guid.Empty)
+                selectedObjList = new List<ChangeLogDto>() { objList.FirstOrDefault() };
+            else
+                selectedObjList = new List<ChangeLogDto>() { objList.FirstOrDefault(x => x.ChangeId == changeId) };
+        }
+        else
+        {
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+    }
+
+    async Task OnDateFilterChange(DateTime args)
+    {
+        date = new DateOnly(args.Year, args.Month, 1);
+        await LoadList().ConfigureAwait(false);
+    }
+}

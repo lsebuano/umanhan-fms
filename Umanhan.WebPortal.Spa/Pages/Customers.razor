@@ -1,0 +1,180 @@
+﻿@page "/customers"
+@attribute [Authorize]
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject CustomerService CustomerService
+
+<PermissionView Permission="Masterdata.Full">
+    <ChildContent>
+        <PageTitle>Customers</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/customers" Text="Customers" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Customers</RadzenText>
+
+        @if (objList == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <RadzenRow>
+                <RadzenColumn Size="12" SizeMD="6">
+                    <div class="full-height-container">
+                        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
+                                        AllowSorting="true" PagerHorizontalAlign="HorizontalAlign.Left" Data="@objList" GridLines="DataGridGridLines.Vertical"
+                                        ColumnWidth="100%" LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                        @bind-Value=@selectedObjList IsLoading=@isLoading Page="@ShowLoading" class="umh-height-70vh">
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                <RadzenButton Text="New" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@(() => OpenDialog(Guid.Empty))></RadzenButton>
+                            </HeaderTemplate>
+                            <Columns>
+                                <RadzenDataGridColumn Context="obj" Filterable="false" Sortable="false" TextAlign="TextAlign.Center" Frozen="true" Width="120px">
+                                    <Template Context="obj">
+                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                      Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => OpenDialog(obj.CustomerId))"
+                                                      @onclick:stopPropagation="true" title="Edit" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Base" Variant="Variant.Flat" Size="ButtonSize.Medium"
+                                                      Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => Delete(obj))"
+                                                      @onclick:stopPropagation="true" title="Delete" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Property="@nameof(CustomerDto.CustomerName)" Title="Customer" Frozen="false" Width="300px" />
+                                <RadzenDataGridColumn Property="@nameof(CustomerDto.Address)" Title="Address" Frozen="false" Width="300px" />
+                                <RadzenDataGridColumn Property="@nameof(CustomerDto.ContactInfo)" Title="Contact Info" Frozen="false" Width="200px" />
+                                <RadzenDataGridColumn Property="@nameof(CustomerDto.CustomerType)" Title="Customer Type" Frozen="false" Width="200px" />
+                                <RadzenDataGridColumn Context="obj" Property="@nameof(CustomerDto.ContractEligibleString)" Frozen="false" Width="150px" >
+                                    <HeaderTemplate>
+                                        <div class="umh-text-align-center">
+                                            Contract<br />
+                                            <span>Eligible</span>
+                                        </div>
+                                    </HeaderTemplate>
+                                    <Template Context="obj">
+                                        <RadzenBadge BadgeStyle="BadgeStyle.Info" Shade="Shade.Light" Text="@obj.ContractEligibleString" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    </div>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="6">
+                    <RadzenCard Variant="Variant.Outlined" class="umh-height-100" >
+                        <RadzenStack Gap="1rem">
+                            <RadzenCard Variant="Variant.Text" class="rz-background-color-primary-lighter rz-color-on-primary-lighter">
+                                Customer: <b>@selectedObjList.FirstOrDefault()?.CustomerName</b>
+                            </RadzenCard>
+                            <RadzenTabs>
+                                <Tabs>
+                                    <RadzenTabsItem Text="Contracts">
+                                        <RadzenDataGrid @ref="contractsGrid" AllowFiltering="true" AllowPaging="true" ShowPagingSummary="true"
+                                                        Data="@(selectedObjList.FirstOrDefault()?.FarmContracts)">
+                                            <Columns>
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDto.FarmName)" Title="Farm" Width="250px" />
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDto.FarmLocation)" Title="Location" Width="200px" />
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDto.ContractDate)" Title="Contract Date" Width="150px" FormatString="{0:MM/dd/yyyy}" />
+                                                <RadzenDataGridColumn Property="@nameof(FarmContractDto.Status)" Title="Status" Width="150px" />
+                                            </Columns>
+                                        </RadzenDataGrid>
+                                    </RadzenTabsItem>
+                                </Tabs>
+                            </RadzenTabs>
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenColumn>
+            </RadzenRow>
+        }
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    RadzenDataGrid<FarmContractDto> contractsGrid;
+    private IEnumerable<CustomerDto>? objList;
+    private IList<CustomerDto> selectedObjList;
+    private bool isLoading;
+    private Guid id;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync().ConfigureAwait(false);
+        await ShowLoading().ConfigureAwait(false);
+        await LoadList().ConfigureAwait(false);
+    }
+
+    private async Task ShowLoading()
+    {
+        isLoading = true;
+        await Task.Yield();
+        isLoading = false;
+    }
+
+    private async Task LoadList(Guid? customerId = null)
+    {
+        var response = await CustomerService.GetAllCustomersAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            objList = response.Data;
+            if (customerId != null || customerId != Guid.Empty)
+                selectedObjList = new List<CustomerDto>() { objList.FirstOrDefault() };
+            else
+                selectedObjList = new List<CustomerDto>() { objList.FirstOrDefault(x => x.CustomerId == customerId) };
+        }
+        else
+        {
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+    }
+
+    private async Task OpenDialog(Guid id)
+    {
+        var result = await DialogService.OpenAsync<CustomerDialog>("Customer",
+                    new Dictionary<string, object> { { "ObjId", id } },
+                    new DialogOptions()
+                        {
+                            Width = "50vw",
+                            Height = "80vh",
+                        });
+        // refresh grid if the dialog returns true
+        if (result != null)
+        {
+            await GridReload();
+        }
+    }
+
+    private async Task GridReload()
+    {
+        await LoadList();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Delete(CustomerDto obj)
+    {
+        var confirm = await DialogService.Confirm(
+                $"Are you sure you want to remove '{obj.CustomerName}'?",
+                "Confirm Remove",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+        if (confirm == true)
+        {
+            var response = await CustomerService.DeleteCustomerAsync(obj.CustomerId).ConfigureAwait(false);
+            if (response != null)
+            {
+                await NotificationService.ShowSuccess("Delete Successful");
+                // refresh grid
+                await LoadList();
+            }
+            else
+            {
+                await NotificationService.ShowError("Oops! Something went wrong.");
+            }
+        }
+    }
+}

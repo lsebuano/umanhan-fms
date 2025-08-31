@@ -1,0 +1,246 @@
+﻿@inherits LayoutComponentBase
+@inject IJSRuntime JSRuntime
+@inject SystemSettingService SystemSettingService
+@inject NavigationManager NavigationManager
+@inject FarmService FarmService
+@inject WebAppSetting Setting
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserStateService UserState
+
+<RadzenComponents />
+
+<HeadContent>
+    <RadzenTheme Theme="material" />
+</HeadContent>
+
+<RadzenLayout class="umh-position-relative">
+    <RadzenHeader>
+        <RadzenRow AlignItems="AlignItems.Center" Gap="0">
+            <RadzenColumn SizeXS="8" SizeMD="5">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+
+                    <AuthorizeView>
+                        <Authorized>
+                            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                        </Authorized>
+                    </AuthorizeView>
+
+                    <a href="/">
+                        <RadzenImage AlternateText="umanhan FMS" Path="icon-192.png" class="rz-me-2 umh-width-40px" title="Home" />
+                        <RadzenLabel class="poppins-semibold" Text="umanhan FMS" />
+                    </a>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn SizeXS="4" SizeMD="7">
+                <LoginDisplay />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenHeader>
+    <RadzenSidebar Responsive="true" class="@($"{sidebarStyle} {hideSidebarClass}")">
+        <RadzenPanelMenu DisplayStyle="@(sidebarExpanded? MenuItemDisplayStyle.IconAndText: MenuItemDisplayStyle.Icon)" ShowArrow="@sidebarExpanded">
+            <AuthorizeView>
+                <Authorized>
+                    <RadzenPanelMenuItem Text="Dashboard" Icon="dashboard" Path="/" title="Dashboard" />
+
+                    @if (setupComplete)
+                    {
+                        <PermissionView Permission="Farm.Full">
+                            @* <RadzenPanelMenuItem Text="Farm Map" Icon="map" Path="farm-map" title="Farm Map" /> *@
+                            <RadzenPanelMenuItem Text="Farm Activities" Icon="calendar_month" Path="farm-activities" title="Farm Activities" />
+                            <RadzenPanelMenuItem Text="Contracts" Icon="handshake" Path="contracts" title="Contracts" />
+                            <RadzenPanelMenuItem Text="Crop Performance" Icon="data_thresholding" Path="crop-performance" title="Crop Performance" />
+                        </PermissionView>
+
+                        <PermissionView Permission="Cashier.Full">
+                            <RadzenPanelMenuItem Text="Encode Sales" Icon="point_of_sale" Path="encode-sales" title="Encode Sales" />
+                        </PermissionView>
+
+                        <PermissionView Permission="Finance.Full">
+                            <RadzenPanelMenuItem Text="Financials" Icon="currency_franc" title="Financials" Click="@(() => sidebarExpanded = true)">
+                                <RadzenPanelMenuItem Text="Farm Sales" Icon="nutrition" Path="farm-sales" title="Farm Sales" />
+                                @* <RadzenPanelMenuItem Text="Funds" Icon="attach_money" Path="farm-funds" title="Funds" /> *@
+                                <RadzenPanelMenuItem Text="General Expenses" Icon="euro" Path="general-expenses" title="General Expenses" />
+                            </RadzenPanelMenuItem>
+                        </PermissionView>
+
+                        <PermissionView Permission="Farm.Full">
+                            <RadzenPanelMenuItem Text="Pricing Conditions" Icon="calculate" Path="pricing" title="Pricing Conditions" />
+                            <RadzenPanelMenuItem Text="Send Quotation" Icon="format_quote" Path="quotations" title="Send Quotation" />
+                            <RadzenPanelMenuItem Text="Farm Inventories" Icon="warehouse" Path="farm-inventories" title="Farm Inventories" />
+                        </PermissionView>
+
+                        <PermissionView Permission="Weather.Full">
+                            <RadzenPanelMenuItem Text="Weather Forecast" Icon="partly_cloudy_day" Path="weather" title="Weather Forecast" />
+                        </PermissionView>
+                    }
+
+                    <PermissionView Permission="User.Full">
+                        <RadzenPanelMenuItem Text="Users & Roles" Icon="manage_accounts" Path="users" title="User Maintenance" />
+                    </PermissionView>
+
+                    <PermissionView Permission="Masterdata.Full">
+                        <RadzenPanelMenuItem Text="Maintenance" Icon="settings_heart" title="Maintenance" Click="@showSidebar">
+                            <RadzenPanelMenuItem Text="Categories" Icon="potted_plant" Path="categories" title="Categories" />
+                            <RadzenPanelMenuItem Text="Crops" Icon="potted_plant" Path="crops" title="Crops" />
+                            <RadzenPanelMenuItem Text="Customers" Icon="potted_plant" Path="customers" title="Customers" />
+                            <RadzenPanelMenuItem Text="Inventories" Icon="potted_plant" Path="inventories" title="Inventories" />
+                            <RadzenPanelMenuItem Text="Laborers" Icon="potted_plant" Path="laborers" title="Laborers" />
+                            @* <RadzenPanelMenuItem Text="Livestocks" Icon="potted_plant" Path="livestocks" title="Livestocks" /> *@
+                            <RadzenPanelMenuItem Text="Soil Types" Icon="potted_plant" Path="soil-types" title="Soil Types" />
+                            <RadzenPanelMenuItem Text="Staffs" Icon="potted_plant" Path="staffs" title="Staffs" />
+                            <RadzenPanelMenuItem Text="Tasks" Icon="potted_plant" Path="tasks" title="Tasks" />
+                            <RadzenPanelMenuItem Text="Units" Icon="potted_plant" Path="units" title="Units" />
+                            @if (isSuperAdmin)
+                            {
+                                <RadzenPanelMenuItem Text="Farms" Icon="nature" Path="farms" title="Farms" class="rz-border-top" />
+                                <RadzenPanelMenuItem Text="Customer Types" Icon="nature" Path="customer-types" title="Customer Types" />
+                                <RadzenPanelMenuItem Text="Expense Types" Icon="nature" Path="expense-types" title="Expense Types" />
+                                <RadzenPanelMenuItem Text="Payment Types" Icon="nature" Path="payment-types" title="Payment Types" />
+                                <RadzenPanelMenuItem Text="Product Types" Icon="nature" Path="product-types" title="Product Types" />
+                                <RadzenPanelMenuItem Text="Transaction Types" Icon="nature" Path="transaction-types" title="Transaction Types" />
+                            }
+                        </RadzenPanelMenuItem>
+                    </PermissionView>
+
+                    <PermissionView Permission="Log.Read">
+                        <RadzenPanelMenuItem Text="Change Logs" Icon="history" Path="change-logs" title="Change Logs" />
+                    </PermissionView>
+                </Authorized>
+            </AuthorizeView>
+
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+    @* <RadzenBody class="" @onclick="CollapseSidebar"> *@
+    <RadzenBody>
+        <CascadingValue Value="@Settings" IsFixed="false">
+            <div class="rz-ml-4">
+                @Body
+            </div>
+        </CascadingValue>
+    </RadzenBody>
+    <Footer />
+</RadzenLayout>
+
+@code {
+    private WebAppSetting Settings = new();
+
+    bool sidebarExpanded = false;
+
+    private Guid farmId;
+    private string farmName;
+    private string currentUserId;
+    private bool setupComplete;
+    private bool setupStarted;
+    private bool isInitialized;
+    private bool isAuthenticated = false;
+    private bool isSuperAdmin = false;
+    private string sidebarStyle = "umh-width-max-content";
+    private string hideSidebarClass = "rz-display-none";
+    private bool isAuthChecked = false;
+
+    private AuthenticationStateChangedHandler authChangedHandler;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sidebarExpanded = false;
+        farmId = Setting.FarmId; // <-- this is from the scoped object (appsettings)
+
+        await UserState.WhenReady;
+
+        // // First check after auth provider initializes
+        RefreshUserState();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            sidebarExpanded = false;
+
+            // Keep checking until UserState.IsReady becomes true
+            var retries = 0;
+            while (!UserState.IsReady && retries < 10)
+            {
+                Console.WriteLine($"MainLayout:OnAfterRenderAsync:Retrying {retries}x...");
+                retries++;
+                await Task.Delay(900); // wait for auth to finish loading
+            }
+            Console.WriteLine($"MainLayout:OnAfterRenderAsync:UserState.IsReady {UserState.IsReady}");
+            if (UserState.IsReady)
+            {
+                await LoadFarmDetails();
+            }
+            else
+            {
+                Console.WriteLine("UserState never became ready.");
+            }
+        }
+    }
+
+    private void RefreshUserState()
+    {
+        isAuthenticated = UserState.IsAuthenticated;
+        isSuperAdmin = isAuthenticated && UserState.IsSuperAdmin;
+        isAuthChecked = true;
+    }
+
+    private async Task LoadFarmDetails()
+    {
+        Console.WriteLine($"MainLayout:LoadFarmDetails");
+        var response = await FarmService.GetFarmByIdAsync(Setting.FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            showSidebar();
+
+            var farm = response.Data;
+            farmName = farm.FarmName;
+            setupComplete = farm.SetupComplete;
+            setupStarted = farm.SetupStarted;
+
+            Settings.FarmId = farm.FarmId;
+            Settings.FarmName = farm.FarmName;
+            Settings.IsFarmSetupComplete = farm.SetupComplete.ToString();
+            Settings.IsFarmSetupStarted = farm.SetupStarted.ToString();
+            Settings.FarmLat = Convert.ToDouble(farm.Lat ?? 0);
+            Settings.FarmLng = Convert.ToDouble(farm.Lng ?? 0);
+            Settings.IsLoaded = true;
+
+            //Console.WriteLine($"MainLayout:LoadFarmDetails: FarmId: {Settings.FarmId}");
+            //Console.WriteLine($"MainLayout:LoadFarmDetails: FarmName: {Settings.FarmName}");
+            //Console.WriteLine($"MainLayout:LoadFarmDetails: IsFarmSetupComplete: {Settings.IsFarmSetupComplete}");
+
+            StateHasChanged();
+        }
+    }
+
+    private void showSidebar()
+    {
+        sidebarExpanded = true;
+        hideSidebarClass = "";
+        StateHasChanged();
+    }
+
+    private void CollapseSidebar()
+    {
+        if (sidebarExpanded)
+        {
+            sidebarExpanded = false;
+            hideSidebarClass = "";
+            StateHasChanged();
+        }
+    }
+
+    private void ExpandSidebar()
+    {
+        if (!sidebarExpanded)
+        {
+            sidebarExpanded = true;
+            hideSidebarClass = "";
+        }
+    }
+
+    public void Dispose()
+    {
+        UserState.OnChange -= StateHasChanged;
+    }
+}

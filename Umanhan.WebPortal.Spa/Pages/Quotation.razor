@@ -1,0 +1,514 @@
+﻿@page "/quotations"
+@attribute [Authorize]
+@inject QuotationService QuotationService
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject CustomerService CustomerService
+@inject ProductTypeService ProductTypeService
+@inject ProductService ProductService
+@inject UnitService UnitService
+@inject IValidator<QuotationProductDto> Validator
+@inject WebAppSettingService AppSettingService
+
+<PermissionView Permission="Farm.Write">
+    <ChildContent>
+        <PageTitle>Quotations</PageTitle>
+        <RadzenBreadCrumb>
+            <RadzenBreadCrumbItem Path="/" Text="Home" />
+            <RadzenBreadCrumbItem Path="/quotations" Text="Quotations" />
+        </RadzenBreadCrumb>
+        <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Quotations</RadzenText>
+
+        <RadzenRow>
+            <RadzenColumn SizeMD="8">
+                <RadzenCard Variant="Variant.Flat">
+                    <RadzenStack Orientation="Orientation.Vertical">
+                        <RadzenRow>
+                            <RadzenColumn SizeMD="6">
+                                <RadzenFormField Text="Customer/Partner" Variant="Variant.Text" class="umh-width-100">
+                                    <RadzenDropDown @bind-Value="@customerId" Data=@customers TextProperty="CustomerName" AllowClear=true
+                                                    Placeholder="Select" ValueProperty="CustomerId" Change="@OnCustomerChange" Name="CustomerId" />
+                                </RadzenFormField>
+                            </RadzenColumn>
+                            <RadzenColumn SizeMD="6">
+                                <RadzenFormField Text="Email" Variant="Variant.Text" class="umh-width-100">
+                                    <RadzenTextBox @bind-Value="@email" Placeholder="email" Name="Email" />
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                        <RadzenDataGrid @ref="productsGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced"
+                                        AllowSorting="true" PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left"
+                                        ShowPagingSummary="true" Data="@quotationProducts" ColumnWidth="160px" LogicalFilterOperator="LogicalFilterOperator.Or"
+                                        SelectionMode="DataGridSelectionMode.Single" EditMode="DataGridEditMode.Single" TItem="QuotationProductDto"
+                                        RowUpdate="@OnUpdateRowGrid" RowCreate="@OnCreateRowGrid">
+                            <EmptyTemplate>
+                                <p class="umh-no-records">No records to display.</p>
+                            </EmptyTemplate>
+                            <HeaderTemplate>
+                                <RadzenButton Text="Add Product" Icon="add" ButtonStyle="ButtonStyle.Base" Click=@InsertRowGrid />
+                            </HeaderTemplate>
+                            <Columns>
+                                <RadzenDataGridColumn Context="contract" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right" Width="150px">
+                                    <Template Context="product">
+                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowGrid(product))" @onclick:stopPropagation="true" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid(product))" @onclick:stopPropagation="true" />
+                                    </Template>
+                                    <EditTemplate Context="product">
+                                        <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowGrid(product))" aria-label="Save" />
+                                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditGrid(product))" aria-label="Cancel" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid(product))" aria-label="Delete" />
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn Context="product" Property="@nameof(QuotationProductDto.ProductTypeName)" Title="Type" Width="200px">
+                                    <Template Context="product">
+                                        @productTypes.FirstOrDefault(p => p.TypeId == product.ProductTypeId)?.ProductTypeName
+                                    </Template>
+                                    <EditTemplate Context="product">
+                                        <RadzenTemplateForm Data="@product" EditContext="@GetEditContext(product)">
+                                            <RadzenDropDown @bind-Value="@product.ProductTypeId" Data=@productTypes TextProperty="ProductTypeName" Placeholder="Select type" ValueProperty="TypeId"
+                                                            class="umh-width-100" Name="TypeId" Change="@(() => LoadProductsFromZones(product.ProductTypeId))" />
+                                            <ValidationMessage For="@(() => product.ProductTypeId)" />
+                                        </RadzenTemplateForm>
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn Context="product" Property="@nameof(QuotationProductDto.ProductName)" Title="Product" Width="200px">
+                                    <Template Context="product">
+                                        @products.FirstOrDefault(p => p.ProductId == product.ProductId)?.ProductName
+                                    </Template>
+                                    <EditTemplate Context="product">
+                                        <RadzenTemplateForm Data="@product" EditContext="@GetEditContext(product)">
+                                            <RadzenDropDown @bind-Value="@product.ProductId" Data=@products TextProperty="ProductName" Placeholder="Select product" ValueProperty="ProductId"
+                                                            class="umh-width-100" Name="ProductId" Change="@(() => SetUnit(product))" />
+                                            <ValidationMessage For="@(() => product.ProductId)" />
+                                        </RadzenTemplateForm>
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn Context="product" Property="@nameof(QuotationProductDto.Unit)" Title="Unit" Width="200px">
+                                    <Template>
+                                        <RadzenBadge Text="@unitName" BadgeStyle="BadgeStyle.Info" Shade="Shade.Light" Variant="Variant.Flat" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn Context="product" Property="@nameof(QuotationProductDto.Quantity)" Title="Quantity" Width="200px" FormatString="{0:n2}">
+                                    <EditTemplate Context="product">
+                                        <RadzenTemplateForm Data="@product" EditContext="@GetEditContext(product)">
+                                            <RadzenNumeric @bind-Value="@product.Quantity" />
+                                            <ValidationMessage For="@(() => product.Quantity)" />
+                                        </RadzenTemplateForm>
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn Context="product" Property="@nameof(QuotationProductDto.UnitPrice)" Title="Unit Price" Width="200px" FormatString="{0:n2}">
+                                    <EditTemplate Context="product">
+                                        <RadzenTemplateForm Data="@product" EditContext="@GetEditContext(product)">
+                                            <RadzenNumeric @bind-Value="@product.UnitPrice" />
+                                            <ValidationMessage For="@(() => product.UnitPrice)" />
+                                        </RadzenTemplateForm>
+                                    </EditTemplate>
+                                </RadzenDataGridColumn>
+
+                                <RadzenDataGridColumn Context="product" Property="@nameof(QuotationProductDto.Total)" Title="Total" Width="200px" FormatString="{0:n2}" TextAlign="TextAlign.Right">
+                                    <EditTemplate Context="product">
+                                        <RadzenText Text="@product.Total.ToString("n2")" />
+                                    </EditTemplate>
+                                    <FooterTemplate>
+                                        Total: <b>@quotationProducts.Sum(x => x.Total).ToString("n2")</b>
+                                    </FooterTemplate>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center">
+                            <RadzenButton Text=@(isSending ? "Sending..." : "Send") Icon=@(isSending ? "hourglass" : "forward")
+                                          Click="@(() => SendQuotation())" Disabled="@(isSending || quotationProducts.Count == 0)" />
+                        </RadzenStack>
+                    </RadzenStack>
+                </RadzenCard>
+            </RadzenColumn>
+            <RadzenColumn SizeMD="4">
+                @* <RadzenDataGrid @ref="quotationsGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced"
+                                AllowSorting="true" PageSize="15" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left"
+                                ShowPagingSummary="true" Data="@quotationsList" ColumnWidth="160px" LogicalFilterOperator="LogicalFilterOperator.Or"
+                                SelectionMode="DataGridSelectionMode.Single" TItem="QuotationDto" >
+                    <EmptyTemplate>
+                        <p class="umh-no-records">No records to display.</p>
+                    </EmptyTemplate>
+                    <Columns>
+                        <RadzenDataGridColumn Property="@nameof(QuotationDto.QuotationNumber)" Title="RFQ Number" Width="200px"/>
+                        <RadzenDataGridColumn Property="@nameof(QuotationDto.RecipientName)" Title="Customer/Partner" Width="300px" />
+                        <RadzenDataGridColumn Property="@nameof(QuotationDto.DateSent)" Title="Date Sent" Width="200px" />
+                        <RadzenDataGridColumn Property="@nameof(QuotationDto.ValidUntil)" Title="Valid Until" Width="200px" />
+                        <RadzenDataGridColumn Property="@nameof(QuotationDto.QuotationTotal)" Title="Total" Width="200px"/>
+                    </Columns>
+                </RadzenDataGrid> *@
+
+                <RadzenText Text="@loadingTop3" Visible="@(quotationsList.Count == 0)" />
+
+                @foreach (var item in quotationsList)
+                {
+                    <RadzenCard Variant="Variant.Outlined" class="rz-mb-3">
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Start" Gap="1rem">
+                            <RadzenStack Gap="0">
+                                <RadzenText TextStyle="TextStyle.DisplayH5">@item.QuotationNumber</RadzenText>
+
+                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-my-0">Customer/Partner</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1"><b>@item.RecipientName</b></RadzenText>
+
+                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-my-0">Date Sent</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1"><b>@item.DateSent</b></RadzenText>
+
+                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-my-0">Valid Until</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1"><b>@item.ValidUntil</b></RadzenText>
+
+                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-2 rz-my-0">Amount</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body1"><b>@item.QuotationTotal.ToString("n2")</b></RadzenText>
+                            </RadzenStack>
+                        </RadzenStack>
+                    </RadzenCard>
+                }
+            </RadzenColumn>
+        </RadzenRow>
+    </ChildContent>
+    <NotAuthorized>
+        <Unauthorized />
+    </NotAuthorized>
+</PermissionView>
+
+@code {
+    [CascadingParameter] WebAppSetting Settings { get; set; }
+
+    RadzenDataGrid<QuotationProductDto> productsGrid;
+    // RadzenDataGrid<QuotationDto> quotationsGrid;
+
+    List<QuotationProductDto> quotationProducts = new();
+    List<QuotationDto> quotationsList = new();
+
+    List<QuotationProductDto> productItemToInsert = [];
+    List<QuotationProductDto> productItemToUpdate = [];
+
+    Dictionary<QuotationProductDto, EditContext> editContexts = new();
+
+    private List<ProductTypeDto> productTypes = new();
+    private List<ProductDto> products = new();
+    private List<CustomerDto> customers = new();
+    private List<UnitDto> units = new();
+    private Guid customerId = Guid.Empty;
+    private string customerName;
+    private string email;
+    private bool isSending = false;
+    private string unitName;
+    private ProductDto selectedProduct;
+    // private QuotationProductDto obj = new();
+    Dictionary<EditContext, ValidationMessageStore> stores = new();
+    private bool hasLoadedSecondaryData = false;
+
+    private Guid farmId;
+    private string farmName;
+    private string loadingTop3 = "Loading top 3 quotations...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings().ConfigureAwait(false);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !hasLoadedSecondaryData)
+        {
+            hasLoadedSecondaryData = true;
+            _ = Task.Run(async () =>
+            {
+                await LoadCustomers().ConfigureAwait(false);
+                await LoadProductTypes().ConfigureAwait(false);
+                await LoadUnits().ConfigureAwait(false);
+                await LoadQuotations().ConfigureAwait(false);
+
+                InvokeAsync(StateHasChanged); // Safely update the UI after background work
+            });
+        }
+    }
+
+    async Task LoadSettings()
+    {
+        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+
+        farmId = Settings.FarmId;
+    }
+
+    private EditContext GetEditContext(QuotationProductDto product)
+    {
+        if (!editContexts.TryGetValue(product, out var context))
+        {
+            context = new EditContext(product);
+            editContexts[product] = context;
+        }
+        return context;
+    }
+
+    private async Task LoadCustomers()
+    {
+        var response = await CustomerService.GetAllCustomersAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            customers = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadQuotations()
+    {
+        var response = await QuotationService.GetTop3QuotationsByFarmIdAsync(Settings.FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            quotationsList = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadProductTypes()
+    {
+        var response = await ProductTypeService.GetAllProductTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            productTypes = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadProductsFromZones(Guid productTypeId)
+    {
+        var response = await ProductService.GetProductsByFarmByTypeAsync(farmId, productTypeId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            products = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadUnits()
+    {
+        var response = await UnitService.GetAllUnitsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            units = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    void SetUnit(QuotationProductDto productObj)
+    {
+        selectedProduct = products.FirstOrDefault(x => x.ProductId == productObj.ProductId);
+        if (selectedProduct != null)
+        {
+            unitName = selectedProduct.UnitName;
+
+            productObj.UnitId = selectedProduct.UnitId;
+            productObj.Unit = selectedProduct.UnitName;
+            productObj.ProductName = selectedProduct.ProductName;
+        }
+    }
+
+    async Task SendQuotation()
+    {
+        isSending = true;
+
+        if (customerId == Guid.Empty)
+        {
+            await NotificationService.ShowError("Please select a customer/partner.", "Validation Error");
+            isSending = false;
+            return;
+        }
+
+        var total = quotationProducts.Sum(x => x.Total);
+        var paramsModel = new SendQuotationParamsModel
+        {
+            //PricingProfileId = ProfileId,
+            BasePrice = 0,
+            CustomerId = customerId,
+            CustomerName = customerName,
+            CustomerEmail = email,
+            FinalPrice = total,
+            FarmId = farmId,
+            FarmName = farmName,
+            Products = quotationProducts
+        };
+
+        var task = DialogService.OpenAsync("", ds =>@<BusyDialog /> ,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        var response = await QuotationService.CreateAndSendQuotationAsync(paramsModel).ConfigureAwait(false);
+        if (response == "SUCCESS")
+        {
+            await NotificationService.ShowSuccess("Quotation sent successfully.");
+        }
+        else
+        {
+            await NotificationService.ShowError("Can't send the quotation right now.", "Oops");
+        }
+        isSending = false;
+        DialogService.Close(true);
+    }
+
+    void OnCustomerChange()
+    {
+        var cust = customers.FirstOrDefault(x => x.CustomerId == customerId);
+        if (cust != null)
+        {
+            email = cust.EmailAddress;
+            customerName = cust.CustomerName;
+
+            StateHasChanged();
+        }
+        else
+            Console.WriteLine("Customer not found.");
+    }
+
+    void ResetGrid()
+    {
+        //Console.WriteLine("ResetGrid");
+        productItemToInsert.Clear();
+        productItemToUpdate.Clear();
+    }
+
+    void ResetGrid(QuotationProductDto productObj)
+    {
+        //Console.WriteLine("ResetGrid: " + JsonSerializer.Serialize(productObj));
+        productItemToInsert.Remove(productObj);
+        productItemToUpdate.Remove(productObj);
+    }
+
+    async Task EditRowGrid(QuotationProductDto productObj)
+    {
+        //Console.WriteLine("EditRowGrid: " + JsonSerializer.Serialize(productObj));
+        if (!productsGrid.IsValid) return;
+
+        productItemToUpdate.Add(productObj);
+        await productsGrid.EditRow(productObj);
+    }
+
+    async Task OnUpdateRowGrid(QuotationProductDto productObj)
+    {
+        //Console.WriteLine("OnUpdateRowGrid: " + JsonSerializer.Serialize(productObj));
+
+        if (!ValidateRow(productObj))
+            return;
+
+        int index = quotationProducts.FindIndex(p => p.RowKey == productObj.RowKey);
+        if (index != -1)
+        {
+            quotationProducts[index] = productObj;
+        }
+
+        await productsGrid.Reload();
+    }
+
+    async Task SaveRowGrid(QuotationProductDto productObj)
+    {
+        //Console.WriteLine("SaveRowGrid: " + JsonSerializer.Serialize(productObj));
+
+        if (!ValidateRow(productObj))
+            return;
+
+        //productObj.QuotationId = farmId;
+        await productsGrid.UpdateRow(productObj);
+    }
+
+    void CancelEditGrid(QuotationProductDto productObj)
+    {
+        //Console.WriteLine("CancelEditGrid: " + JsonSerializer.Serialize(productObj));
+        ResetGrid(productObj);
+        productsGrid.CancelEditRow(productObj);
+    }
+
+    async Task DeleteRowGrid(QuotationProductDto productObj)
+    {
+        //Console.WriteLine("DeleteRowGrid: " + JsonSerializer.Serialize(productObj));
+        ResetGrid(productObj);
+
+        if (quotationProducts.Contains(productObj))
+        {
+            var confirm = await DialogService.Confirm(
+                $"Are you sure you want to delete item for '{productObj.ProductName}'?",
+                "Confirm Delete",
+                new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" }
+            );
+
+            if (confirm == true)
+            {
+                quotationProducts.Remove(productObj);
+                await productsGrid.Reload();
+            }
+        }
+        else
+        {
+            productsGrid.CancelEditRow(productObj);
+            await productsGrid.Reload();
+        }
+    }
+
+    async Task InsertRowGrid()
+    {
+        //Console.WriteLine("InsertRowGrid");
+        if (!productsGrid.IsValid) return;
+
+        var productObj = new QuotationProductDto();
+        //productObj.QuotationId = farmId;
+        productItemToInsert.Add(productObj);
+
+        await productsGrid.InsertRow(productObj);
+    }
+
+    async Task InsertAfterRowGrid(QuotationProductDto row)
+    {
+        //Console.WriteLine("InsertAfterRowGrid: " + JsonSerializer.Serialize(row));
+
+        if (!productsGrid.IsValid) return;
+
+        var productObj = new QuotationProductDto();
+        //productObj.QuotationId = farmId;
+        productItemToInsert.Add(productObj);
+
+        await productsGrid.InsertAfterRow(productObj, row);
+    }
+
+    async Task OnCreateRowGrid(QuotationProductDto productObj)
+    {
+        //Console.WriteLine("OnCreateRowGrid: " + JsonSerializer.Serialize(productObj));
+
+        quotationProducts.Add(productObj);
+        productItemToInsert.Remove(productObj);
+    }
+
+    bool ValidateRow(QuotationProductDto product)
+    {
+        var editContext = GetEditContext(product);
+
+        if (!stores.TryGetValue(editContext, out var store))
+        {
+            store = new ValidationMessageStore(editContext);
+            stores[editContext] = store;
+        }
+        store.Clear();
+
+        var result = Validator.Validate(product);
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                store.Add(editContext.Field(error.PropertyName), error.ErrorMessage);
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return false;
+        }
+
+        return true;
+    }
+}

@@ -1,0 +1,113 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Entities\AppDbContext.cs" />
+    <Compile Remove="Entities\AuditLog.cs" />
+    <Compile Remove="Entities\CropMonitoringLog.cs" />
+    <Compile Remove="Entities\CropMonitoringLogPhoto.cs" />
+    <Compile Remove="Entities\CropRotation.cs" />
+    <Compile Remove="Entities\CropVariety.cs" />
+    <Compile Remove="Entities\Equipment.cs" />
+    <Compile Remove="Entities\EquipmentMaintenanceLog.cs" />
+    <Compile Remove="Entities\Expense.cs" />
+    <Compile Remove="Entities\ExpenseCategory.cs" />
+    <Compile Remove="Entities\ExpenseForecast.cs" />
+    <Compile Remove="Entities\FarmOperation.cs" />
+    <Compile Remove="Entities\FinancialTransaction.cs" />
+    <Compile Remove="Entities\HarvestDataLog.cs" />
+    <Compile Remove="Entities\Intercropping.cs" />
+    <Compile Remove="Entities\InventoryTransaction.cs" />
+    <Compile Remove="Entities\LaborCost.cs" />
+    <Compile Remove="Entities\LivestockHealthRecord.cs" />
+    <Compile Remove="Entities\PestAndDiseaseLog.cs" />
+    <Compile Remove="Entities\ResourceUsage.cs" />
+    <Compile Remove="Entities\Supplier.cs" />
+    <Compile Remove="Entities\TaskAssignment.cs" />
+    <Compile Remove="Entities\TransactionCategory.cs" />
+    <Compile Remove="Entities\WeatherDataLog.cs" />
+    <Compile Remove="Entities\YieldForecast.cs" />
+    <Compile Remove="Staging\Category.cs" />
+    <Compile Remove="Staging\ChangeLog.cs" />
+    <Compile Remove="Staging\Crop.cs" />
+    <Compile Remove="Staging\Customer.cs" />
+    <Compile Remove="Staging\CustomerType.cs" />
+    <Compile Remove="Staging\ExpenseType.cs" />
+    <Compile Remove="Staging\Farm.cs" />
+    <Compile Remove="Staging\FarmActivity.cs" />
+    <Compile Remove="Staging\FarmActivityExpense.cs" />
+    <Compile Remove="Staging\FarmActivityLaborer.cs" />
+    <Compile Remove="Staging\FarmActivityUsage.cs" />
+    <Compile Remove="Staging\FarmContract.cs" />
+    <Compile Remove="Staging\FarmContractDetail.cs" />
+    <Compile Remove="Staging\FarmContractSale.cs" />
+    <Compile Remove="Staging\FarmCrop.cs" />
+    <Compile Remove="Staging\FarmInventory.cs" />
+    <Compile Remove="Staging\FarmLivestock.cs" />
+    <Compile Remove="Staging\FarmProduceInventory.cs" />
+    <Compile Remove="Staging\FarmTransaction.cs" />
+    <Compile Remove="Staging\FarmZone.cs" />
+    <Compile Remove="Staging\FarmZoneYield.cs" />
+    <Compile Remove="Staging\FinancialEntry.cs" />
+    <Compile Remove="Staging\FundSource.cs" />
+    <Compile Remove="Staging\Inventory.cs" />
+    <Compile Remove="Staging\Laborer.cs" />
+    <Compile Remove="Staging\Livestock.cs" />
+    <Compile Remove="Staging\Module.cs" />
+    <Compile Remove="Staging\PaymentType.cs" />
+    <Compile Remove="Staging\Permission.cs" />
+    <Compile Remove="Staging\PricingCondition.cs" />
+    <Compile Remove="Staging\PricingConditionType.cs" />
+    <Compile Remove="Staging\PricingProfile.cs" />
+    <Compile Remove="Staging\ProductType.cs" />
+    <Compile Remove="Staging\Quotation.cs" />
+    <Compile Remove="Staging\QuotationDetail.cs" />
+    <Compile Remove="Staging\Role.cs" />
+    <Compile Remove="Staging\RolePermission.cs" />
+    <Compile Remove="Staging\SoilType.cs" />
+    <Compile Remove="Staging\Staff.cs" />
+    <Compile Remove="Staging\SystemSetting.cs" />
+    <Compile Remove="Staging\Task.cs" />
+    <Compile Remove="Staging\TransactionType.cs" />
+    <Compile Remove="Staging\UmanhanDbContext11.cs" />
+    <Compile Remove="Staging\UmanhanDbContext2.cs" />
+    <Compile Remove="Staging\UmanhanLoggerDbContext2.cs" />
+    <Compile Remove="Staging\Unit.cs" />
+    <Compile Remove="Staging\VwProductLookup.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authorization" Version="8.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.Design" Version="1.1.0" />
+    <PackageReference Include="System.Net.Http" Version="4.3.4" />
+    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+    <PackageReference Include="TimeZoneConverter" Version="7.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Staging\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Umanhan.Shared\Umanhan.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

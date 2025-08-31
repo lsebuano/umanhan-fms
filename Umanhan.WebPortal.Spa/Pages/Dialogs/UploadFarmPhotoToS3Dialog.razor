@@ -1,0 +1,132 @@
+﻿@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+@inject FarmInventoryService FarmInventoryService
+@inject FarmActivityPhotoService FarmActivityPhotoService
+
+<RadzenCard Variant="Variant.Outlined">
+    <RadzenStack Orientation="Orientation.Vertical">
+        <RadzenUpload Multiple="@AllowMultiple" class="umh-width-100" Accept="image/*" MaxFileCount="10" Auto="false"
+                      Change=@OnChange
+                      Progress=@OnProgress
+                      Complete=@OnComplete
+                      Error="@(args => Console.WriteLine($"Error: {args.Message}"))"
+                      InputAttributes="@(new Dictionary<string,object>{ { "aria-label", "select file" }})" />
+        <RadzenTextArea @bind-Value="notes" Placeholder="Enter notes for the photo" class="umh-width-100 umh-mt-1rem" />
+    </RadzenStack>
+</RadzenCard>
+<RadzenFooter>
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+        <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" Class="mt-3 me-2" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Light" />
+        <RadzenButton Text="Upload" Click="BeginUpload" Icon="upload_file" Disabled="@(file is null)" Variant="Variant.Flat"></RadzenButton>
+    </RadzenStack>
+</RadzenFooter>
+
+<RadzenText Text="@progress" TextStyle="TextStyle.Caption" />
+
+@code {
+    [Parameter] public Guid ActivityId { get; set; }
+    [Parameter] public bool AllowMultiple { get; set; } = false;
+
+    private IBrowserFile file;
+    private bool uploading = false;
+    private string progress = "";
+    private string url;
+    private string notes;
+
+    async Task OnChange(UploadChangeEventArgs args)
+    {
+        foreach (var file in args.Files)
+        {
+            if (file.Size > 2 * 1024 * 1024) // 2 MB
+            {
+                await NotificationService.ShowError("File is too large (max 2 MB)", "Error").ConfigureAwait(false);
+                return;
+            }
+        }
+        file = args.Files.FirstOrDefault();
+    }
+
+    async Task OnComplete(UploadCompleteEventArgs args)
+    {
+        //Console.WriteLine($"Upload complete with server response: {args.RawResponse}");
+        //Console.WriteLine(args);
+
+        //Console.WriteLine($"Upload complete with server response: {args.RawResponse}");
+        // if (args.IsSuccess)
+        // {
+        //     await NotificationService.ShowSuccess("File uploaded successfully.", "Upload Success").ConfigureAwait(false);
+        // }
+        // else
+        // {
+        //     await NotificationService.ShowError("File upload failed.", "Upload Error").ConfigureAwait(false);
+        // }
+    }
+
+    void OnProgress(UploadProgressArgs args)
+    {
+        progress = $"Upload progress: {args.Progress}% / {args.Loaded} of {args.Total} bytes.";
+        if (args.Progress == 100)
+        {
+            foreach (var file in args.Files)
+            {
+                progress = $"Uploaded: {file.Name} / {file.Size} bytes";
+            }
+        }
+    }
+
+    async Task BeginUpload()
+    {
+        if (file is null)
+        {
+            await NotificationService.ShowError("Please select a file to upload.", "Upload Error").ConfigureAwait(false);
+            uploading = false;
+            return;
+        }
+
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        uploading = true;
+
+        try
+        {
+            string contentType = file.ContentType;
+            var result = await FarmInventoryService.GetPresignedUrlAsync(file.Name, contentType).ConfigureAwait(false);
+            //Console.WriteLine(result);
+
+            url = result["Url"];
+            var key = result["Key"];
+
+            var response = await FarmActivityPhotoService.UploadFileToS3Async(file, ActivityId, key, url, notes).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                var d = response.Data;
+                if (d != null)
+                {
+                    await NotificationService.ShowSuccess("File uploaded successfully.", "Upload Success").ConfigureAwait(false);
+                    DialogService.Close(null);
+                    DialogService.Close(d);
+                }
+                else
+                {
+                    await NotificationService.ShowError("File upload failed.", "Upload Error").ConfigureAwait(false);
+                    DialogService.Close(null);
+                }
+            }
+            else
+            {
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+                DialogService.Close(null);
+            }
+        }
+        catch (Exception ex)
+        {
+            await NotificationService.ShowError("An error occurred while uploading the file.", "Upload Error").ConfigureAwait(false);
+            DialogService.Close(null);
+        }
+        finally
+        {
+            uploading = false;
+        }
+    }
+}

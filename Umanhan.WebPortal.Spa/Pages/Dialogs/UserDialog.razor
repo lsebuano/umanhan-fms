@@ -1,0 +1,153 @@
+﻿@inject DialogService DialogService
+@inject UserService UserService
+@inject AppNotificationService NotificationService
+@inject IValidator<UserDto> Validator
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+        <RadzenTemplateForm TItem="UserDto" Data="@obj" Submit="@SaveChanges">
+            <RadzenStack>
+                <FluentValidationValidator Validator="@Validator" />
+
+                <RadzenFormField Text="First Name" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.FirstName" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.FirstName)" />
+
+                <RadzenFormField Text="Last Name" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.LastName" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.LastName)" />
+
+                <RadzenFormField Text="Email" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.Email" /> 
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.Email)" />
+
+                @* <RadzenFormField Text="Phone Number" Variant="Variant.Text">
+                    <RadzenTextBox @bind-Value="obj.PhoneNumber" Placeholder="+639123456789" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => obj.PhoneNumber)" /> *@
+
+                @* <RadzenFormField Text="Is Active" Variant="Variant.Text">
+                    <RadzenRadioButtonList @bind-Value=@obj.IsActive TValue="bool" class="rz-m-4 rz-mt-8">
+                        <Items>
+                            <RadzenRadioButtonListItem Text="Yes" Value="true" />
+                            <RadzenRadioButtonListItem Text="No" Value="false" />
+                        </Items>
+                    </RadzenRadioButtonList>
+                </RadzenFormField> *@
+            </RadzenStack>
+
+            <RadzenFooter>
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                    <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                    <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                </RadzenStack>
+            </RadzenFooter>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenStack>
+
+@code {
+    [Parameter] public string ObjId { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+    private string mode = "Add";
+    private UserDto obj;
+    private string title = "Message";
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (obj == null)
+        {
+            obj = new UserDto();
+        }
+        await LoadObj().ConfigureAwait(false);
+        // initialize the context
+        editContext = new EditContext(obj);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        //await LoadObj().ConfigureAwait(false);
+        // update the context
+        //editContext = new EditContext(obj);
+    }
+
+    private async Task LoadObj()
+    {
+        if (!string.IsNullOrEmpty(ObjId))
+        {
+            mode = "Edit";
+            var response = await UserService.GetUserByEmailAsync(ObjId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            mode = "Add";
+            obj = new UserDto();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            UserDto response = null;
+            if (mode == "Add" && string.IsNullOrEmpty(ObjId))
+            {
+                response = await UserService.CreateUserAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await UserService.UpdateUserAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+}

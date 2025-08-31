@@ -1,0 +1,62 @@
+﻿@inject DialogService DialogService
+
+@if (ImageUrls?.Any() == true)
+{
+    <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center">
+        <RadzenImage Path="@ImageUrls[CurrentIndex].Url" Click="Next" class="umh-preview-image" />
+        <RadzenText Text="@ImageUrls[CurrentIndex].Notes" class="rz-color-base-800 umh-comment-text" />
+    </RadzenStack>
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="rz-mt-5">
+        <RadzenButton Text="Prev" Disabled="@(CurrentIndex == 0)" Click="Prev" Icon="navigate_before" />
+        <RadzenText Text="@($"{CurrentIndex + 1}/{ImageUrls.Count}")"
+                    class="umh-badge-label umh-note-box-container" />
+        <RadzenButton Text="Next" Disabled="@(CurrentIndex == ImageUrls.Count - 1)" Click="Next" Icon="navigate_next" IconPosition="IconPosition.Right" />
+    </RadzenStack>
+}
+
+@code {
+    [Parameter] public List<PhotoItem> ImageUrls { get; set; }
+    [Parameter] public string DefaultImageUrl { get; set; }
+
+    private int CurrentIndex { get; set; } = 0;
+    
+    protected override void OnParametersSet()
+    {
+        if (ImageUrls?.Count > 0)
+        {
+            if (!string.IsNullOrWhiteSpace(DefaultImageUrl))
+            {
+                var index = ImageUrls.FindIndex(p => p.Url == DefaultImageUrl);
+                CurrentIndex = index >= 0 ? index : 0;
+            }
+            else
+            {
+                CurrentIndex = 0;
+            }
+        }
+    }
+
+    void Close()
+    {
+        ImageUrls = null;
+        DialogService.Close();
+    }
+
+    private void Next()
+    {
+        if (ImageUrls != null && CurrentIndex < ImageUrls.Count - 1)
+        {
+            CurrentIndex++;
+            StateHasChanged();
+        }
+    }
+
+    private void Prev()
+    {
+        if (ImageUrls != null && CurrentIndex > 0)
+        {
+            CurrentIndex--;
+            StateHasChanged();
+        }
+    }
+}

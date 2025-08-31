@@ -1,0 +1,77 @@
+﻿@page "/taskscard/{CategoryID}"
+@inject DialogService DialogService
+@inject CategoryService CategoryService
+@inject TaskService TaskService
+@inject AppNotificationService NotificationService
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenStack>
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Contact</RadzenText>
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center">
+                    <RadzenImage Path="" class="umh-avatar" AlternateText="@(category.CategoryName)" />
+                    <RadzenStack Gap="0" class="rx-text-truncate">
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0 umh-text-color-tertiary">Employee</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@(category.CategoryName)</b></RadzenText>
+                        <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0 umh-text-color-tertiary">Company</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@(category.CategoryName)</b></RadzenText>
+                    </RadzenStack>
+                </RadzenStack>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+                <RadzenText TextStyle="TextStyle.Subtitle1">Delivery Information</RadzenText>
+                <RadzenStack Gap="0" class="rz-text-truncate">
+                    <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0 umh-text-color-tertiary">Address</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@(category.CategoryId)</b></RadzenText>
+                    <RadzenText TextStyle="TextStyle.Overline" class="rz-mt-2 rz-my-0 umh-text-color-tertiary">Address</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Body1" class="rz-text-truncate"><b>@(category.CategoryId)</b></RadzenText>
+                </RadzenStack>
+            </RadzenColumn>
+        </RadzenRow>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-m-0">Category @(category.CategoryName)</RadzenText>
+            <RadzenBadge BadgeStyle="BadgeStyle.Secondary" Text="AABBCC" />
+        </RadzenStack>
+        <RadzenDataGrid AllowFiltering="true" AllowPaging="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                        Data="@(tasks)" ColumnWidth="200px" Density="Density.Compact" AllowAlternatingRows="true">
+            <Columns>
+                <RadzenDataGridColumn Property="@nameof(Models.Entities.Task.Id)" Title="Id" />
+                <RadzenDataGridColumn Property="@nameof(Models.Entities.Task.TaskName)" Title="Task" />
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid CategoryID { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+
+    private CategoryDto category;
+    private IEnumerable<TaskDto> tasks;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        await LoadTasks().ConfigureAwait(false);
+    }
+
+    private async Task LoadTasks()
+    {
+        var response = await CategoryService.GetCategoryByIdAsync(CategoryID).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            category = response.Data;
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+
+        var response2 = await TaskService.GetTasksByCategoryAsync(CategoryID).ConfigureAwait(false);
+        if (response2.IsSuccess)
+        {
+            tasks = response2.Data;
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+}

@@ -1,0 +1,59 @@
+﻿.hero {
+    color: white;
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+}
+
+.feature-icon {
+    font-size: 2rem;
+    color: #28a745;
+}
+
+.btn-primary {
+    background-color: #28a745;
+    border: none;
+}
+
+    .btn-primary:hover {
+        background-color: #218838;
+    }
+
+.lead {
+    text-shadow: 1px 1px 5px #000;
+}
+
+footer {
+    background-color: #f8f9fa;
+    padding: 2rem 0;
+}
+
+.rz-body {
+    padding: 0 !important;
+}
+
+.rz-ml-4 {
+    margin: 0 !important;
+}
+
+.hero-bg-hero_image_1 {
+    background: url('/images/hero_image_1.webp') center center / cover no-repeat;
+}
+
+.hero-bg-hero_image_2 {
+    background: url('/images/hero_image_2.webp') center center / cover no-repeat;
+}
+
+.hero-bg-hero_image_3 {
+    background: url('/images/hero_image_3.webp') center center / cover no-repeat;
+}
+
+.hero-bg-hero_image_4 {
+    background: url('/images/hero_image_4.webp') center center / cover no-repeat;
+}
+
+.hero-bg-hero_image_5 {
+    background: url('/images/hero_image_5.webp') center center / cover no-repeat;
+}

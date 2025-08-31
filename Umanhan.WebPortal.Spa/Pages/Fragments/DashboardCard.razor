@@ -1,0 +1,14 @@
+﻿@using System.Globalization
+
+<div class="dashboard-card umh-card-container">
+    <h4>@Title</h4>
+    <h2>@Amount.ToString("C", CultureInfo.CreateSpecificCulture("en-PH"))</h2>
+    <small>@Description</small>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; }
+    [Parameter] public decimal Amount { get; set; }
+    [Parameter] public string Description { get; set; }
+    [Parameter] public string BackgroundColor { get; set; } = "#FFFFFF";
+}

@@ -1,0 +1,249 @@
+﻿@inject DialogService DialogService
+@inject UnitService UnitService
+@inject ProductService ProductService
+@inject ProductTypeService ProductTypeService
+@inject FarmContractDetailService FarmContractDetailService
+@inject AppNotificationService NotificationService
+@inject IValidator<FarmContractDetailDto> Validator
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border" >
+        <RadzenTemplateForm TItem="FarmContractDetailDto" Data=@model Submit=@OnSubmit>
+            <RadzenStack>
+                <FluentValidationValidator Validator="@Validator" />
+                @* <ValidationSummary /> *@
+
+                <RadzenFormField Text="Product Type" Variant="Variant.Text">
+                    <RadzenDropDown @bind-Value="@model.ProductTypeId" Data=@productTypes TextProperty="ProductTypeName"
+                                    Placeholder="Select product type" ValueProperty="TypeId"
+                                    class="umh-width-100" Name="ProductTypeId" Change="@(() => LoadProductsFromZones(model.ProductTypeId))" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => model.ProductTypeId)" />
+
+                <RadzenFormField Text="Product" Variant="Variant.Text">
+                    <RadzenDropDown @bind-Value="@model.ProductId" Data=@products TextProperty="ProductName"
+                                    Placeholder="Select product" ValueProperty="ProductId"
+                                    class="umh-width-100" Name="ProductId" Change="@(() => SetUnit(model.ProductId))" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => model.ProductId)" />
+
+                <RadzenFormField Text="Unit" Variant="Variant.Text">
+                    <RadzenDropDown @bind-Value="@model.UnitId" Data=@units TextProperty="UnitName"
+                                    Placeholder="Select unit" ValueProperty="UnitId"
+                                    class="umh-width-100" Name="UnitId" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => model.UnitId)" />
+
+                <RadzenFormField Text="Contracted Quantity" Variant="Variant.Text">
+                    <RadzenNumeric @bind-Value="@model.ContractedQuantity" class="umh-width-100" Name="ContractedQuantity" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => model.ContractedQuantity)" />
+
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenFormField Text="Contracted Unit Price" Variant="Variant.Text">
+                        <RadzenNumeric @bind-Value="@model.ContractedUnitPrice" class="umh-width-100" Name="ContractedUnitPrice" />
+                    </RadzenFormField>
+                    <RadzenButton ButtonStyle="ButtonStyle.Base" Icon="calculate" title="Use Pricing Conditions" Click="OpenComputeContractPriceDialog" />
+                </RadzenStack>
+                <ValidationMessage For="@(() => model.ContractedUnitPrice)" />
+
+                <RadzenFormField Text="Expected Total" Variant="Variant.Text" AllowFloatingLabel="false">
+                    <RadzenText Text="@($"{model.ContractedQuantity * model.ContractedUnitPrice:n2}")" class="rz-mt-2 umh-width-100" />
+                </RadzenFormField>
+
+                <RadzenFormField Text="Harvest Date" Variant="Variant.Text">
+                    <RadzenDatePicker @bind-Value="@model.HarvestDate" ShowTime=false Name="HarvestDate" DateFormat="MM/dd/yyyy" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => model.HarvestDate)" />
+
+                <RadzenFormField Text="Pickup Date" Variant="Variant.Text">
+                    <RadzenDatePicker @bind-Value="@model.PickupDate" ShowTime=false Name="PickupDate" DateFormat="MM/dd/yyyy" />
+                </RadzenFormField>
+                <ValidationMessage For="@(() => model.PickupDate)" />
+            </RadzenStack>
+            <RadzenFooter>
+                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                    <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                    <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                </RadzenStack>
+            </RadzenFooter>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; }
+    [Parameter] public Guid ContractId { get; set; }
+    [Parameter] public Guid FarmId { get; set; }
+
+    private FarmContractDetailDto model = new FarmContractDetailDto();
+    private List<UnitDto> units = new();
+    private List<ProductDto> products = new();
+    private List<ProductTypeDto> productTypes = new();
+    private Guid objId;
+    private string mode = "Add";
+    private string message;
+
+    private FarmContractDetailDto obj;
+    private EditContext editContext;
+    private bool isSaving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        objId = ObjId;
+        if (obj == null)
+        {
+            obj = new FarmContractDetailDto();
+        }
+        await LoadObj().ConfigureAwait(false);
+        editContext = new EditContext(obj);
+
+        await LoadProductTypes().ConfigureAwait(false);
+        await LoadUnits().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+
+        if (objId != ObjId)
+        {
+            objId = ObjId;
+            await LoadObj().ConfigureAwait(false);
+            editContext = new EditContext(obj);
+        }
+        model.ContractId = ContractId;
+    }
+
+    private async Task LoadUnits()
+    {
+        var response = await UnitService.GetAllUnitsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            units = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadProductTypes()
+    {
+        var response = await ProductTypeService.GetAllProductTypesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            productTypes = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadProductsFromZones(Guid productTypeId)
+    {
+        var response = await ProductService.GetProductsByFarmByTypeAsync(FarmId, productTypeId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            products = response.Data.ToList();
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    private async Task LoadObj()
+    {
+        if (!ObjId.Equals(Guid.Empty))
+        {
+            mode = "Edit";
+            var response = await FarmContractDetailService.GetFarmContractDetailByIdAsync(ObjId).ConfigureAwait(false);
+
+            //Console.WriteLine(response?.ToString());
+
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            mode = "Add";
+            obj = new FarmContractDetailDto();
+            obj.ContractId = ContractId;
+        }
+    }
+
+    async Task SetUnit(Guid productId)
+    {
+        model.UnitId = products.FirstOrDefault(x => x.ProductId == productId).UnitId;
+    }
+
+    async Task OnSubmit(FarmContractDetailDto model)
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            FarmContractDetailDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await FarmContractDetailService.CreateFarmContractDetailAsync(model).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await FarmContractDetailService.UpdateFarmContractDetailAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+
+    async Task OpenComputeContractPriceDialog()
+    {
+        if (FarmId == Guid.Empty)
+        {
+            await NotificationService.ShowError("No default farm data was loaded.");
+            return;
+        }
+
+        model.ContractedUnitPrice = await DialogService.OpenAsync<PricingConditionDialog>("Compute Contract Price",
+                    new Dictionary<string, object> { { "FarmId", FarmId } },
+                    new DialogOptions()
+                    {
+                        Width = "350px",
+                        Height = "400px",
+                    });
+    }
+}

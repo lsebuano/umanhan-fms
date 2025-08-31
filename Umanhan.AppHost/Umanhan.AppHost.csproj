@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>5be46909-6ea5-4d79-929f-dd6db5b457f5</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Umanhan.Logs.Api\Umanhan.Logs.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.Masterdata.Api\Umanhan.Masterdata.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.Nlp.Api\Umanhan.Nlp.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.Operations.Api\Umanhan.Operations.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.Reports.Api\Umanhan.Reports.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.SecretsManager.Api\Umanhan.SecretsManager.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.Settings.Api\Umanhan.Settings.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.UserManager.Api\Umanhan.UserManager.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.Weather.Api\Umanhan.Weather.Api.csproj" />
+    <ProjectReference Include="..\Umanhan.WebPortal.Spa\Umanhan.WebPortal.Spa.csproj" />
+  </ItemGroup>
+
+</Project>

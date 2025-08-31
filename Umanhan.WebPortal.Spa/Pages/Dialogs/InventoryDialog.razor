@@ -1,0 +1,213 @@
+﻿@inject DialogService DialogService
+@inject InventoryService InventoryService
+@inject AppNotificationService NotificationService
+@inject IValidator<InventoryDto> Validator
+@inject CategoryService CategoryService
+@inject UnitService UnitService
+
+<RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
+    <RadzenStack>
+        <RadzenColumn Size="12" SizeMD="12" class="rz-p-4 rz-border-radius-1 umh-border-cell-border">
+            <RadzenTemplateForm TItem="InventoryDto" Data="@obj" Submit="@SaveChanges">
+                <RadzenStack>
+                    <FluentValidationValidator Validator="@Validator" />
+
+                    <RadzenFormField Text="Item" Variant="Variant.Text">
+                        <RadzenTextBox @bind-Value="obj.ItemName" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.ItemName)" />
+
+                    <RadzenFormField Text="Category" Variant="Variant.Text">
+                        <RadzenDropDown @ref=@radzenDropDown @bind-SearchText=SearchText FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        FilterOperator="StringFilterOperator.StartsWith" AllowFiltering="true"
+                                        Data=@categories TextProperty="@nameof(CategoryDto.CategoryName)" ValueProperty="@nameof(CategoryDto.CategoryId)"
+                                        AllowClear="true" @bind-Value="obj.CategoryId" Name="CategoryId" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.CategoryId)" />
+
+                    <RadzenFormField Text="Unit" Variant="Variant.Text">
+                        <RadzenDropDown @ref=@radzenDropDown2 @bind-SearchText=SearchText2 FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
+                                        FilterOperator="StringFilterOperator.StartsWith" AllowFiltering="true"
+                                        Data=@units TextProperty="@nameof(UnitDto.UnitName)" ValueProperty="@nameof(UnitDto.UnitId)"
+                                        AllowClear="true" @bind-Value="obj.UnitId" Name="UnitId" />
+                    </RadzenFormField>
+                    <ValidationMessage For="@(() => obj.UnitId)" />
+                </RadzenStack>
+
+                <RadzenFooter>
+                    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Center" Gap="0.5rem">
+                        <RadzenButton Text="Cancel" Click="() => DialogService.Close(false)" ButtonStyle="ButtonStyle.Light" />
+                        <RadzenButton Text=@(isSaving ? "Saving..." : "Save") Icon=@(isSaving ? "hourglass" : "check") Type="Submit" Disabled="isSaving" />
+                    </RadzenStack>
+                </RadzenFooter>
+            </RadzenTemplateForm>
+        </RadzenColumn>
+    </RadzenStack>
+    <RadzenStack Visible="@ShowClose" Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem">
+        <RadzenButton Click="@((args) => DialogService.Close(true))" Variant="Variant.Flat" Text="Close" class="umh-width-120px" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public Guid ObjId { get; set; }
+    [Parameter] public bool ShowClose { get; set; }
+    private string mode = "Add";
+    private InventoryDto obj;
+    private string title = "Message";
+    private string message;
+    private EditContext editContext;
+    private bool isSaving;
+
+    RadzenDropDown<Guid> radzenDropDown;
+    private string searchText;
+    private IEnumerable<CategoryDto> categories;
+
+    RadzenDropDown<Guid?> radzenDropDown2;
+    private string searchText2;
+    private IEnumerable<UnitDto> units;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (obj == null)
+        {
+            obj = new InventoryDto();
+        }
+        // initialize the context
+        editContext = new EditContext(obj);
+        await LoadCategories().ConfigureAwait(false);
+        await LoadUnits().ConfigureAwait(false);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync().ConfigureAwait(false);
+        await LoadObj().ConfigureAwait(false);
+        // update the context
+        editContext = new EditContext(obj);
+    }
+
+    private async Task LoadObj()
+    {
+        if (!ObjId.Equals(Guid.Empty))
+        {
+            mode = "Edit";
+            var response = await InventoryService.GetInventoryByIdAsync(ObjId).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                obj = response.Data;
+            }
+            else
+                await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+        }
+        else
+        {
+            mode = "Add";
+            obj = new InventoryDto();
+        }
+    }
+
+    private async Task SaveChanges()
+    {
+        if (isSaving) return;
+
+        isSaving = true;
+
+        if (!editContext.Validate())
+        {
+            Console.WriteLine("Form validation failed!");
+            return;
+        }
+
+        bool isSuccess = false;
+        var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+
+        try
+        {
+            InventoryDto response = null;
+            if (mode == "Add" && ObjId == Guid.Empty)
+            {
+                response = await InventoryService.CreateInventoryAsync(obj).ConfigureAwait(false);
+            }
+            else
+            {
+                response = await InventoryService.UpdateInventoryAsync(obj).ConfigureAwait(false);
+            }
+
+            if (response == null)
+            {
+                message = "An error occurred while saving your data.";
+                await DialogService.Alert($"Error: {message}", "Error");
+            }
+            else
+            {
+                message = "Save successful.";
+                isSuccess = true;
+                await NotificationService.ShowSuccess(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            await DialogService.Alert($"Error: {ex.Message}", "Error");
+        }
+        finally
+        {
+            isSaving = false;
+            DialogService.Close(isSuccess); // close the nested dialog
+            if (isSuccess)
+                DialogService.Close(isSuccess); // close the parent dialog
+        }
+    }
+
+    public string SearchText
+    {
+        get
+        {
+            return searchText;
+        }
+        set
+        {
+            if (searchText != value)
+            {
+                searchText = value;
+                // searchTextStatus = $"Search text: {searchText}";
+                //Console.WriteLine($"Search text: {radzenDropDown.SearchText}");
+            }
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        var response = await CategoryService.GetAllCategoriesAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            categories = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+
+    public string SearchText2
+    {
+        get
+        {
+            return searchText2;
+        }
+        set
+        {
+            if (searchText2 != value)
+            {
+                searchText2 = value;
+                // searchTextStatus = $"Search text: {searchText}";
+                //Console.WriteLine($"Search text: {radzenDropDown2.SearchText}");
+            }
+        }
+    }
+
+    private async Task LoadUnits()
+    {
+        var response = await UnitService.GetAllUnitsAsync().ConfigureAwait(false);
+        if (response.IsSuccess)
+            units = response.Data;
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+    }
+}
