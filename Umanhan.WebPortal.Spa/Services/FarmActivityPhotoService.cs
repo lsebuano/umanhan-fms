@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Forms;
-using System.Net.Http;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Models;
+using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.WebPortal.Spa.Services
 {

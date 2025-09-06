@@ -1,0 +1,313 @@
+﻿@attribute [Authorize]
+@inject IJSRuntime JSRuntime
+@inject IConfiguration Configuration
+@implements IAsyncDisposable
+@inject DialogService DialogService
+@inject AppNotificationService NotificationService
+@inject FarmService FarmService
+@inject FarmZoneService FarmZoneService
+
+<RadzenRow class="rz-mb-10">
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="10">
+        <RadzenBadge BadgeStyle="BadgeStyle.Info" Variant="Variant.Outlined" class="umh-mb-0">Status</RadzenBadge>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" class="rz-me-5">
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="umh-mb-0">Draw the Farm Boundary</RadzenText>
+            <RadzenIcon Icon="check_circle" IconColor="@(Model.IsFarmBoundaryDrawn ? Colors.Success : Colors.Base500)" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" class="rz-me-5">
+            <RadzenText TextStyle="TextStyle.Subtitle1" class="umh-mb-0">Draw the Zone Boundaries</RadzenText>
+            <RadzenIcon Icon="check_circle" IconColor="@(Model.IsZoneBoundariesDrawn ? Colors.Success : Colors.Base500)" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenRow>
+
+<RadzenRow>
+    <RadzenColumn Size="12" SizeMD="6">
+        <RadzenTextBox id="searchBox" Name="searchBox" Placeholder="Search for a location" class="rz-mb-5 umh-width-300px" />
+    </RadzenColumn>
+    <RadzenColumn Size="12" SizeMD="6">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
+            <RadzenLabel Text="Edit Mode" Component="False" />
+            <RadzenSwitch @bind-Value=@isEditMode Change=@(mode => OnModeChange(mode)) />
+        </RadzenStack>
+    </RadzenColumn>
+</RadzenRow>
+
+<RadzenRow>
+    <RadzenColumn Size="12" SizeMD="12">
+        <div id="map" class="umh-width-100 umh-height-450px" data-tagx="1"></div>
+    </RadzenColumn>
+</RadzenRow>
+
+<RadzenRow>
+    <RadzenColumn Size="12" SizeMD="12">
+        @* <RadzenButton Click="ShowUserLocation" Text="Show My Location" Icon="location_on" class="umh-mt-10px" /> *@
+        <RadzenButton Click="ZoomInToArea" Text="Zoom In to Farm Area" Icon="recenter" class="umh-mt-10px" Disabled="@(!Model.IsFarmBoundaryDrawn)" />
+        <RadzenButton Click="ClearAllZones" Text="Clear All Zones" Icon="clear_all" class="umh-mt-10px" Disabled="@(!isEditMode || !Model.IsZoneBoundariesDrawn)" />
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    [Parameter] public FarmSetupModel Model { get; set; }
+    [Parameter] public EventCallback<FarmSetupModel> ModelChanged { get; set; }
+
+    private DotNetObjectReference<FarmMapFarmArea>? dotNetRef;
+    private bool isMapLoaded = false;
+    private bool isDialogOpen = false;
+
+    private string farmZoneNotes;
+    private string irrigationType;
+    private decimal? sizeInHectares;
+    // private double farmSize;
+    private Guid? soildId;
+    private string zoneName;
+
+    private bool isEditMode = false;
+
+    // default center, Manila
+    private double lat = 14.598722892908546;
+    private double lng = 120.98412850749237;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !isMapLoaded && Model != null)
+        {
+            isMapLoaded = true;
+            dotNetRef = DotNetObjectReference.Create(this);
+
+            // Wait for JS to fully load before calling initialize
+            await JSRuntime.InvokeVoidAsync("eval", "window.farmMap && farmMap.initialize ? farmMap.initialize(null) : console.error('farmMap is not ready yet');");
+
+            await Task.Delay(3000);
+            await JSRuntime.InvokeVoidAsync("farmMap.initialize", dotNetRef, lat, lng, isEditMode);
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("farmMap.drawZones", Model.FarmZones);
+            await JSRuntime.InvokeVoidAsync("console.log", "FarmMapFarmArea: OnAfterRenderAsync: firstRender = false");
+        }
+    }
+
+    private async Task ZoomInToArea()
+    {
+        await JSRuntime.InvokeVoidAsync("farmMap.zoomInToArea", Model.FarmBoundary);
+    }
+
+    private async Task OnModeChange(bool mode)
+    {
+        this.isEditMode = mode;
+        await JSRuntime.InvokeVoidAsync("farmMap.enableEditMode", mode);
+    }
+
+    [JSInvokable("OnFarmBoundaryDrawn")]
+    public async Task OnFarmBoundaryDrawn(List<LatLng> coordinates, LatLng centroid, string location, double size, string staticMapUrl)
+    {
+        Model.FarmSize = size;
+        Model.FarmLocation = location;
+        Model.FarmBoundary = coordinates;
+        Model.FarmCentroid = centroid;
+        Model.IsFarmBoundaryDrawn = true;
+        Model.FarmStaticMapUrl = staticMapUrl;
+
+        StateHasChanged();
+        await ModelChanged.InvokeAsync(Model).ConfigureAwait(false);
+    }
+
+    private async Task ShowUserLocation()
+    {
+        await JSRuntime.InvokeVoidAsync("farmMap.showUserLocation");
+    }
+
+    private async Task ClearAllZones()
+    {
+        var confirmed = await DialogService.Confirm("Are you sure you want to clear all zones?", "Clear All Zones", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (confirmed == true)
+            await JSRuntime.InvokeVoidAsync("farmMap.clearAllPolygons");
+    }
+
+    [JSInvokable("OnZoneDrawn")]
+    public async Task OnZoneDrawn(string zoneId, List<LatLng> coordinates, LatLng zoneCentroid, double area, string staticMapUrl)
+    {
+        Model.Zones.Add(zoneId, coordinates);
+
+        sizeInHectares = Convert.ToDecimal(area / 10000);
+        var farmZone = new FarmZoneDto
+            {
+                FarmId = Model.FarmId,
+                FarmZoneNotes = farmZoneNotes,
+                IrrigationType = irrigationType,
+                SizeInHectares = sizeInHectares,
+                FarmSizeInHectares = Convert.ToDecimal(Model.FarmSize / 10000),
+                FarmSizeInSqm = Convert.ToDecimal(Model.FarmSize),
+                FarmStaticMapUrl = staticMapUrl,
+                SoilId = soildId,
+                ZoneId = Guid.Parse(zoneId),
+                ZoneName = zoneName,
+                ZoneCentroidLat = zoneCentroid.Lat,
+                ZoneCentroidLng = zoneCentroid.Lng,
+
+            };
+        Model.FarmZones.Add(farmZone);
+
+        Model.IsZoneBoundariesDrawn = true;
+        await ModelChanged.InvokeAsync(Model);
+
+        StateHasChanged();
+    }
+
+    [JSInvokable("OnZonesCleared")]
+    public Task OnZonesCleared()
+    {
+        Model.Zones.Clear();
+        Model.FarmZones.Clear();
+        Model.IsZoneBoundariesDrawn = false;
+        return Task.CompletedTask;
+    }
+
+    [JSInvokable("OnZoneClicked")]
+    public async Task OnZoneClicked(string zoneId, string zoneName, double lat, double lng, string color, double area)
+    {
+        if (isDialogOpen || !isEditMode)
+            return;
+
+        isDialogOpen = true;
+
+        await JSRuntime.InvokeVoidAsync("console.log", zoneId);
+
+        string zoneBoundary = JsonSerializer.Serialize(Model.Zones.FirstOrDefault(x => x.Key.Equals(zoneId, StringComparison.OrdinalIgnoreCase)).Value);
+
+        var result = await DialogService.OpenAsync<FarmZoneBoundariesDialog>("Zone Details",
+                    new Dictionary<string, object> {
+                        { "ObjId", Guid.Parse(zoneId) },
+                        { "Lat", lat },
+                        { "Lng", lng },
+                        { "ZoneName", zoneName },
+                        { "Color", color },
+                        { "Area", area },
+                        { "ZoneBoundary", zoneBoundary },
+                        { "FarmBoundary", Model.FarmBoundary },
+                        { "FarmCentroid", Model.FarmCentroid },
+                        { "FarmLocation", Model.FarmLocation },
+                        { "FarmSize", Model.FarmSize },
+                        { "FarmId", Model.FarmId }
+                                                            },
+                    new DialogOptions()
+                        {
+                            Width = "50vw",
+                            Height = "80vh",
+                        });
+        // update the marker label and polygon color if results is defined
+        if (result != null)
+        {
+            if (result is FarmZoneDto f)
+            {
+                await JSRuntime.InvokeVoidAsync("farmMap.updateZoneDetails", zoneId, f.ZoneName, f.Description, f.ZoneColor, lat, lng, f.AreaInSqm);
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        isDialogOpen = false;
+    }
+
+    [JSInvokable("ShowNotification")]
+    public async Task ShowNotification(string type, string message)
+    {
+        switch (type)
+        {
+            case "success":
+                await NotificationService.ShowSuccess(message);
+                break;
+            case "error":
+                await NotificationService.ShowError(message);
+                break;
+            case "warning":
+                await NotificationService.ShowWarning(message);
+                break;
+            default:
+                await NotificationService.ShowInfo(message);
+                break;
+        }
+    }
+
+    [JSInvokable("LoadFarmZoneMapData")]
+    public async Task<object> LoadFarmZoneMapData()
+    {
+        var response = await FarmService.GetFarmByIdAsync(Model.FarmId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            var farmObj = response.Data;
+            if (farmObj == null)
+            {
+                // show error message
+                return new
+                {
+                    this.Model.FarmBoundary,
+                    this.Model.FarmZones,
+                    this.Model.Zones,
+                };
+            }
+
+            if (string.IsNullOrEmpty(farmObj.BoundaryJson))
+            {
+                // show error message
+                return new
+                {
+                    this.Model.FarmBoundary,
+                    this.Model.FarmZones,
+                    this.Model.Zones
+                };
+            }
+
+            Model.FarmBoundary = JsonSerializer.Deserialize<IEnumerable<LatLng>>(farmObj.BoundaryJson);
+            Model.FarmZones = farmObj.FarmZones.Where(x => !string.IsNullOrWhiteSpace(x.ZoneBoundaryJson))
+                                              .Select(x => new FarmZoneDto
+                                                  {
+                                                      ZoneId = x.ZoneId,
+                                                      ZoneName = x.ZoneName,
+                                                      ZoneColor = x.ZoneColor,
+                                                      ZoneCentroidLat = x.ZoneCentroidLat,
+                                                      ZoneCentroidLng = x.ZoneCentroidLng,
+                                                      ZoneBoundaryJson = x.ZoneBoundaryJson,
+                                                      AreaInSqm = x.AreaInSqm,
+                                                      SizeInHectares = x.SizeInHectares
+                                                  })
+                                              .ToList();
+            Model.Zones = this.Model.FarmZones.ToDictionary(z => z.ZoneId.ToString(),
+                                                     z => JsonSerializer.Deserialize<IEnumerable<LatLng>>(z.ZoneBoundaryJson) ?? new List<LatLng>());
+
+            Model.IsFarmBoundaryDrawn = Model.FarmBoundary.Any();
+            Model.IsZoneBoundariesDrawn = Model.Zones.Count > 0;
+            Model.FarmCentroid = new LatLng
+                {
+                    Lat = Convert.ToDouble(farmObj.Lat),
+                    Lng = Convert.ToDouble(farmObj.Lng)
+                };
+            Model.FarmCrops = farmObj.FarmCrops.ToList();
+            Model.FarmId = farmObj.FarmId;
+            Model.FarmName = farmObj.FarmName;
+            Model.FarmCentroid = Model.FarmCentroid;
+            Model.FarmSize = Convert.ToDouble(farmObj.SizeInHectares);
+            Model.FarmLocation = farmObj.Location;
+            Model.FarmStaticMapUrl = farmObj.StaticMapUrl;
+
+            await ModelChanged.InvokeAsync(Model);
+        }
+        else
+            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+
+        return new
+        {
+            this.Model.FarmBoundary,
+            this.Model.FarmZones,
+            this.Model.Zones
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (dotNetRef != null)
+        {
+            dotNetRef.Dispose();
+        }
+        await Task.CompletedTask;
+    }
+}

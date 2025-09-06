@@ -36,8 +36,8 @@
         <RadzenDataGrid AllowFiltering="true" AllowPaging="true" FilterPopupRenderMode="PopupRenderMode.OnDemand" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                         Data="@(tasks)" ColumnWidth="200px" Density="Density.Compact" AllowAlternatingRows="true">
             <Columns>
-                <RadzenDataGridColumn Property="@nameof(Models.Entities.Task.Id)" Title="Id" />
-                <RadzenDataGridColumn Property="@nameof(Models.Entities.Task.TaskName)" Title="Task" />
+                <RadzenDataGridColumn Property="Id" Title="Id" />
+                <RadzenDataGridColumn Property="TaskName" Title="Task" />
             </Columns>
         </RadzenDataGrid>
     </RadzenStack>

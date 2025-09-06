@@ -1,9 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
-using Umanhan.Models.Dtos;
+using Umanhan.Dtos;
 using Umanhan.Models.Entities;
-using Umanhan.Repositories;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services.Interfaces;
 

@@ -13,8 +13,9 @@
 @inject NavigationManager NavigationManager
 @inject FarmActivityService FarmActivityService
 @inject TooltipService TooltipService
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
 @inject UserStateService UserState
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Farm.Full">
     <ChildContent>
@@ -404,7 +405,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     private IEnumerable<FarmContractDto>? objList;
     private IList<FarmContractDto> selectedObjList = new List<FarmContractDto>();
@@ -531,7 +532,7 @@
     private async Task LoadList()
     {
         // var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        // new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        // new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         var response = await FarmContractService.GetFarmContractsAsync(Settings.FarmId, startDate, endDate).ConfigureAwait(false);
         if (response.IsSuccess)
@@ -751,7 +752,7 @@
     async Task OnUpdateRowGrid1(FarmContractDto contractObj)
     {
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         ResetGrid1(contractObj);
 
@@ -796,7 +797,7 @@
             if (confirm == true)
             {
                 var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
                 var obj = await FarmContractService.DeleteFarmContractAsync(contractObj.ContractId).ConfigureAwait(false);
                 if (obj is not null)
@@ -898,7 +899,7 @@
         }
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         contractObj.FarmId = farmId;
         var obj = await FarmContractService.CreateFarmContractAsync(contractObj).ConfigureAwait(false);
@@ -952,7 +953,7 @@
         {
             // show busy dialog
             var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
             await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
             var taskId = SystemSettingService.GetSetting<Guid>(SettingName.HARVEST_ACTIVITY_TASK.ToString());
@@ -1000,7 +1001,7 @@
         {
             // show busy dialog
             var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
             var response = await FarmContractDetailService.ConfirmPickupAsync(selectedContractDetailId).ConfigureAwait(false);
             if (response != null && response.IsSuccess)
@@ -1043,7 +1044,7 @@
         {
             // show busy dialog
             var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
             var response = await FarmContractDetailService.CancelTransactionAsync(selectedContractDetailId).ConfigureAwait(false);
             if (response != null && response.IsSuccess)
@@ -1086,7 +1087,7 @@
         {
             // show busy dialog
             var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
             var response = await FarmContractDetailService.RecoverHarvestAsync(selectedContractDetailId).ConfigureAwait(false);
             if (response != null && response.IsSuccess)
@@ -1131,7 +1132,7 @@
         {
             // show busy dialog
             var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
             var response = await FarmContractDetailService.MarkTransactionAsPaidAsync(selectedContractDetailId).ConfigureAwait(false);
             if (response != null && response.IsSuccess)
             {

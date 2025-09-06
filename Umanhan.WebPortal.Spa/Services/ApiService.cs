@@ -1,12 +1,11 @@
 ﻿using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using Umanhan.Models.Models;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.WebPortal.Spa.Services
 {

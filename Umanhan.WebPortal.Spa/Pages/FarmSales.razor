@@ -6,7 +6,8 @@
 @inject AppNotificationService NotificationService
 @inject TooltipService TooltipService
 @inject ReportService ReportService
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Finance.Full">
     <ChildContent>
@@ -176,7 +177,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     private RadzenDataGrid<FarmContractSaleDto> salesGrid;
 
@@ -263,7 +264,7 @@
     private async Task LoadList()
     {
         // var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        // new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        // new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         var response = await ReportService.GetFarmSalesAsync(Settings.FarmId, startDate, endDate).ConfigureAwait(false);
         if (response.IsSuccess)

@@ -593,6 +593,27 @@ code {
     text-align: left !important;
 }
 
+.umh-rz-dialog-size {
+    min-height: auto !important;
+    min-width: auto !important;
+    width: auto !important;
+}
+
+.umh-rz-dialog-size-min-width-900px {
+    min-width: 900px !important;
+}
+
+.umh-rz-scheduler-appointment-active {
+    background: var(--rz-success) !important;
+}
+
+.umh-rz-scheduler-appointment-past {
+    background: var(--rz-secondary-dark) !important;
+}
+
+.umh-rz-scheduler-appointment-current {
+    background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2)) !important;
+}
 
 .minimal-container {
     padding: 20px;

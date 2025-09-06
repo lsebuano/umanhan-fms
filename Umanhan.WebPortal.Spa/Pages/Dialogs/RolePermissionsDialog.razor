@@ -60,7 +60,7 @@
         await base.OnInitializedAsync();
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         await LoadModules().ConfigureAwait(false);
         await LoadPerms().ConfigureAwait(false);
@@ -99,7 +99,7 @@
     async Task LoadRolePermissions()
     {
         //var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        //    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        //    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         var response = await RolePermissionService.GetPermissionsForRoleAsync(ObjId).ConfigureAwait(false);
         if (response.IsSuccess)

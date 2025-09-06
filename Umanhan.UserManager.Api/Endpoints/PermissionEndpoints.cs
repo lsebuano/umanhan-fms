@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
-using Umanhan.Models.Dtos;
-using Umanhan.Services;
+using Umanhan.Dtos;
 using Umanhan.Services.Interfaces;
 
 namespace Umanhan.UserManager.Api.Endpoints

@@ -1,12 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using Umanhan.Dtos;
 using Umanhan.Models;
-using Umanhan.Models.Dtos;
 using Umanhan.Repositories.Interfaces;
 
 namespace Umanhan.Repositories

@@ -1,4 +1,4 @@
-﻿using Umanhan.Models.Dtos;
+﻿using Umanhan.Dtos;
 using Umanhan.Services;
 
 namespace Umanhan.Reports.Api.Endpoints

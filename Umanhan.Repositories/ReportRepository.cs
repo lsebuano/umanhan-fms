@@ -1,21 +1,13 @@
 ﻿using Dapper;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using Umanhan.Dtos;
 using Umanhan.Models;
-using Umanhan.Models.Dtos;
 using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
 using Umanhan.Repositories.Interfaces;
-using Umanhan.Shared.Extensions;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static System.Net.Mime.MediaTypeNames;
-using TransactionType = Umanhan.Models.Models.TransactionType;
+using Umanhan.Shared;
+using TransactionType = Umanhan.Dtos.HelperModels.TransactionType;
 
 namespace Umanhan.Repositories
 {

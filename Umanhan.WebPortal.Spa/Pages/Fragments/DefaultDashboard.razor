@@ -1,6 +1,7 @@
 ﻿@attribute [Authorize]
 @inject NavigationManager NavigationManager
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Farm.Read">
     <ChildContent>
@@ -38,7 +39,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     private string farmName = "Loading...";
     private Guid farmId;

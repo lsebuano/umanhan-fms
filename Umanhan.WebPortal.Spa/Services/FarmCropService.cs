@@ -1,6 +1,5 @@
-﻿using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
+﻿using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.WebPortal.Spa.Services
 {
@@ -30,6 +29,18 @@ namespace Umanhan.WebPortal.Spa.Services
             try
             {
                 return _apiService.GetAsync<FarmCropDto>("OperationsAPI", $"api/farm-crops/{id}");
+            }
+            catch (Exception ex)
+            {
+                throw;
+            }
+        }
+
+        public Task<ApiResponse<FarmCropDto>> GetFarmCropByCropIdAsync(Guid id)
+        {
+            try
+            {
+                return _apiService.GetAsync<FarmCropDto>("OperationsAPI", $"api/farm-crops/crop/{id}");
             }
             catch (Exception ex)
             {

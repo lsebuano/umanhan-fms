@@ -1,14 +1,8 @@
-﻿using Amazon.Runtime.Internal.Util;
-using Azure;
-using Microsoft.AspNetCore.OutputCaching;
+﻿using Microsoft.AspNetCore.OutputCaching;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Threading;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
+using Umanhan.Dtos;
 using Umanhan.Services;
-using Umanhan.Services.Interfaces;
 
 namespace Umanhan.UserManager.Api.Endpoints
 {

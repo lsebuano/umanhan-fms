@@ -1,8 +1,4 @@
-﻿//using Newtonsoft.Json;
-using System.Net.Http.Json;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Models;
-using static System.Net.WebRequestMethods;
+﻿using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.WebPortal.Spa.Services
 {

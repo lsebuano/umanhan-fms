@@ -1,12 +1,7 @@
 ﻿using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
-using Amazon.Runtime.Internal;
-using Azure.Core;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Update;
 using System.Data;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
+using Umanhan.Dtos;
 using Umanhan.Services;
 using Umanhan.Services.Interfaces;
 

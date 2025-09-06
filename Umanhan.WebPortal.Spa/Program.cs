@@ -1,13 +1,13 @@
-//using Blazored.LocalStorage;
+using Blazored.LocalStorage;
 //using Blazored.SessionStorage;
 using FluentValidation;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Radzen;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Models;
-using Umanhan.Models.Validators;
+using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
+using Umanhan.Dtos.Validators;
 using Umanhan.WebPortal.Spa.Services;
 using Umanhan.WebPortal.Spa.Services.Interfaces;
 
@@ -18,10 +18,19 @@ public class Program
     public static async Task Main(string[] args)
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
-        builder.Logging.SetMinimumLevel(LogLevel.Debug);
-
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
+
+        builder.Configuration.AddJsonFile($"appsettings.{builder.HostEnvironment.Environment}.json", optional: true);
+        builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+
+        Console.WriteLine($"Environment: {builder.HostEnvironment.Environment}");
+
+        // hide radzen logging in prod
+        if (builder.HostEnvironment.IsProduction())
+        {
+            builder.Logging.AddFilter("Microsoft.AspNetCore.Components.RenderTree.Renderer", LogLevel.None);
+        }
 
         builder.Services.AddScoped(sp => new HttpClient
         {
@@ -35,63 +44,33 @@ public class Program
             client.BaseAddress = new Uri(builder.Configuration["Amazon:AwsSecretsBaseUrl"]);
         });
 
-        //var http = builder.Services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("cfg");
-        //var webAppSettings = await http.GetFromJsonAsync<WebAppSetting>("api/secrets").ConfigureAwait(false);
-        //builder.Services.AddSingleton(webAppSettings);
+        builder.Services.AddBlazoredLocalStorage();
 
-        builder.Services.AddScoped<WebAppSettingService>();
+        WebAppSetting webAppSettings = new()
+        {
+            FarmId = Guid.Parse(builder.Configuration["Settings:FarmId"]),
+            CognitoDomain = builder.Configuration["Settings:CognitoDomain"],
+            CognitoClientId = builder.Configuration["Settings:CognitoClientId"],
+            CognitoAuthority = builder.Configuration["Settings:CognitoAuthority"],
+            CognitoMetadataUrl = builder.Configuration["Settings:CognitoMetadataUrl"],
+            CognitoResponseType = builder.Configuration["Settings:CognitoResponseType"],
+            CognitoRedirectUri = builder.Configuration["Settings:CognitoRedirectUri"],
+            CognitoReturnUrl = builder.Configuration["Settings:CognitoReturnUrl"],
 
-        WebAppSetting webAppSettings = new();
-        //var app = builder.Build();
-        //using (var scope = app.Services.CreateAsyncScope())
-        //{
-        //    var http = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("cfg");
-        //    webAppSettings = await http.GetFromJsonAsync<WebAppSetting>("/api/secrets").ConfigureAwait(false);
+            WebApiUrlOperations = builder.Configuration["Settings:WebApiUrlOperations"],
+            WebApiUrlMasterdata = builder.Configuration["Settings:WebApiUrlMasterdata"],
+            WebApiUrlWeather = builder.Configuration["Settings:WebApiUrlWeather"],
+            WebApiUrlNlp = builder.Configuration["Settings:WebApiUrlNlp"],
+            WebApiUrlUsers = builder.Configuration["Settings:WebApiUrlUsers"],
+            WebApiUrlReport = builder.Configuration["Settings:WebApiUrlReport"],
+            WebApiUrlLogs = builder.Configuration["Settings:WebApiUrlLogs"],
+            WebApiUrlSecrets = builder.Configuration["Settings:WebApiUrlSecrets"],
+            WebApiUrlSettings = builder.Configuration["Settings:WebApiUrlSettings"],
 
-        webAppSettings.FarmId = Guid.Parse(builder.Configuration["Settings:FarmId"]);
-        webAppSettings.CognitoDomain = builder.Configuration["Settings:CognitoDomain"];
-        webAppSettings.CognitoClientId = builder.Configuration["Settings:CognitoClientId"];
-        webAppSettings.CognitoAuthority = builder.Configuration["Settings:CognitoAuthority"];
-        webAppSettings.CognitoMetadataUrl = builder.Configuration["Settings:CognitoMetadataUrl"];
-        webAppSettings.CognitoResponseType = builder.Configuration["Settings:CognitoResponseType"];
-        webAppSettings.CognitoRedirectUri = builder.Configuration["Settings:CognitoRedirectUri"];
-        webAppSettings.CognitoReturnUrl = builder.Configuration["Settings:CognitoReturnUrl"];
-
-        webAppSettings.WebApiUrlOperations = builder.Configuration["Settings:WebApiUrlOperations"];
-        webAppSettings.WebApiUrlMasterdata = builder.Configuration["Settings:WebApiUrlMasterdata"];
-        webAppSettings.WebApiUrlWeather = builder.Configuration["Settings:WebApiUrlWeather"];
-        webAppSettings.WebApiUrlNlp = builder.Configuration["Settings:WebApiUrlNlp"];
-        webAppSettings.WebApiUrlUsers = builder.Configuration["Settings:WebApiUrlUsers"];
-        webAppSettings.WebApiUrlReport = builder.Configuration["Settings:WebApiUrlReport"];
-        webAppSettings.WebApiUrlLogs = builder.Configuration["Settings:WebApiUrlLogs"];
-        webAppSettings.WebApiUrlSecrets = builder.Configuration["Settings:WebApiUrlSecrets"];
-        webAppSettings.WebApiUrlSettings = builder.Configuration["Settings:WebApiUrlSettings"];
-
-        webAppSettings.GoogleMapsApiKey = builder.Configuration["Settings:GoogleMapsApiKey"];
+            GoogleMapsApiKey = builder.Configuration["Settings:GoogleMapsApiKey"]
+        };
 
         builder.Services.AddSingleton(webAppSettings);
-        //}
-
-        //builder.Services.AddScoped<CustomClaimsTransformer>();
-        //builder.Services.AddScoped<IClaimsTransformation, CustomClaimsTransformer>();
-        //builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
-        //builder.Services.AddScoped<CustomAuthStateProvider>();
-        //builder.Services.AddScoped<AuthenticationStateProvider>();
-        //builder.Services.AddScoped<AuthenticationState>();
-
-        // api services
-
-        //builder.Services.AddSingleton<ConfigurationService>();
-        //builder.Services.AddSingleton(async serviceProvider =>
-        //{
-        //    var http = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-        //    var configJson = await http.GetStringAsync("appsettings.Development.json");
-        //    var config = JsonSerializer.Deserialize<GoogleMapsSettingsWrapper>(configJson, new JsonSerializerOptions
-        //    {
-        //        PropertyNameCaseInsensitive = true
-        //    });
-        //    return config.GoogleMaps;
-        //});
 
         builder.Services.AddScoped<ApiService>();
         builder.Services.AddScoped<SystemSettingService>();

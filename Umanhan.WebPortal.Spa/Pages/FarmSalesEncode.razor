@@ -1,6 +1,7 @@
 ﻿@page "/encode-sales"
 @attribute [Authorize]
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
+@inject WebAppSetting Settings
 
 <RadzenBreadCrumb>
     <RadzenBreadCrumbItem Path="/" Text="Home" />
@@ -9,7 +10,7 @@
 <DashboardCashier FarmId="@farmId" FarmName="@farmName" />
 
 @code {
-    [CascadingParameter] public WebAppSetting Settings { get; set; }
+    // [CascadingParameter] public WebAppSetting Settings { get; set; }
     private Guid farmId;
     private string farmName;
 

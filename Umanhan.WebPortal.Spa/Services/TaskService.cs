@@ -1,10 +1,5 @@
-﻿using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Threading.Tasks;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
+﻿using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.WebPortal.Spa.Services
 {

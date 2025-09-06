@@ -1,12 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using Microsoft.Extensions.Logging;
-using System.Collections;
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
-using System.Text;
-using Umanhan.Models.Dtos;
+﻿using Microsoft.Extensions.Logging;
+using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services.Interfaces;
 using Task = System.Threading.Tasks.Task;

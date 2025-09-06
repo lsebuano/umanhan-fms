@@ -6,7 +6,8 @@
 @inject SystemSettingService SystemSettingService
 @inject FarmService FarmService
 @inject AppNotificationService NotificationService
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Weather.Full">
     <ChildContent>
@@ -141,7 +142,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     private WeatherData? weatherData;
     private List<ForecastDailyWeather> weatherForecastData = new();
@@ -157,7 +158,7 @@
     private string sunrise = "0:0";
     private string sunset = "0:0";
     private int population = 0;
-    private Guid farmId;
+    //private Guid farmId;
 
     private bool hasLoadedSecondaryData = false;
 
@@ -192,7 +193,7 @@
 
         //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
 
-        farmId = Settings.FarmId;
+        //farmId = Settings.FarmId;
     }
 
     async Task LoadFarmDetails()

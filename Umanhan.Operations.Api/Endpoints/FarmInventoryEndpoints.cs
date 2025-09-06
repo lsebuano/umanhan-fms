@@ -1,13 +1,8 @@
-﻿using Amazon;
-using Amazon.Runtime;
-using Amazon.Runtime.Internal.Endpoints.StandardLibrary;
-using Amazon.S3;
+﻿using Amazon.S3;
 using Amazon.S3.Model;
 using FluentValidation;
-using System.Net.Http;
-using Umanhan.Models.Dtos;
+using Umanhan.Dtos;
 using Umanhan.Services;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Umanhan.Operations.Api.Endpoints
 {

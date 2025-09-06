@@ -1,13 +1,9 @@
-﻿using Amazon.Runtime.Internal.Util;
-using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Net.NetworkInformation;
-using Umanhan.Models.Dtos;
+﻿using Microsoft.Extensions.Logging;
+using Umanhan.Dtos;
 using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services.Interfaces;
+using Umanhan.Shared;
 
 namespace Umanhan.Services
 {

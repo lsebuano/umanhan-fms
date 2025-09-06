@@ -1,10 +1,8 @@
 ﻿using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 using FluentValidation;
-using System.Security.Claims;
-using Umanhan.Models.Dtos;
+using Umanhan.Dtos;
 using Umanhan.Services;
-using Umanhan.Services.Interfaces;
 using Umanhan.Shared;
 
 namespace Umanhan.UserManager.Api.Endpoints
@@ -48,7 +46,7 @@ namespace Umanhan.UserManager.Api.Endpoints
             }
         }
 
-        public async Task<IResult> GetRolesExceptAsync(UserStateService userState)
+        public async Task<IResult> GetRolesExceptAsync(UserStateServiceForService userState)
         {
             try
             {

@@ -1,7 +1,5 @@
-﻿using System.Diagnostics;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.WebPortal.Spa.Services
 {

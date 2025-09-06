@@ -1,17 +1,8 @@
 ﻿using Amazon.SimpleEmail;
 using Amazon.SimpleEmail.Model;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
+using Umanhan.Dtos;
 using Task = System.Threading.Tasks.Task;
 
 namespace Umanhan.Services

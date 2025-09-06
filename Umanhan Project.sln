@@ -45,6 +45,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umanhan.Shared", "Umanhan.S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umanhan.DashboardKpis.Job", "Umanhan.DashboardKpis.Job\src\Umanhan.DashboardKpis.Job\Umanhan.DashboardKpis.Job.csproj", "{E8FBAEEE-360E-4545-853A-C8AFE338388A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Umanhan.Dtos", "Umanhan.Dtos\Umanhan.Dtos.csproj", "{EBC80C65-FD80-4182-A07B-BDEE76B62849}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -115,6 +117,10 @@ Global
 		{E8FBAEEE-360E-4545-853A-C8AFE338388A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E8FBAEEE-360E-4545-853A-C8AFE338388A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E8FBAEEE-360E-4545-853A-C8AFE338388A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EBC80C65-FD80-4182-A07B-BDEE76B62849}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EBC80C65-FD80-4182-A07B-BDEE76B62849}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EBC80C65-FD80-4182-A07B-BDEE76B62849}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EBC80C65-FD80-4182-A07B-BDEE76B62849}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -135,6 +141,7 @@ Global
 		{0AF0E73E-4A36-4CE8-A8E7-1DD5294BF441} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{DEEDEBC1-8859-41BF-A8C4-2E974EDA7BDF} = {5CC7C792-CA64-446D-8921-4B2ED251204C}
 		{E8FBAEEE-360E-4545-853A-C8AFE338388A} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{EBC80C65-FD80-4182-A07B-BDEE76B62849} = {B928A20A-4765-4DED-AA05-5754837A85A0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {018162C6-770B-4929-B4BF-7DA2A4D1AB51}

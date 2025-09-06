@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
+using Umanhan.Dtos;
 using Umanhan.Services;
 
 namespace Umanhan.Operations.Api.Endpoints
@@ -37,6 +36,20 @@ namespace Umanhan.Operations.Api.Endpoints
             try
             {
                 var farmCrop = await _farmCropService.GetFarmCropByIdAsync(id, "Farm", "Zone.Soil", "Crop.DefaultUnit").ConfigureAwait(false);
+                return farmCrop is not null ? Results.Ok(farmCrop) : Results.NotFound();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving farm crop by ID: {Id}", id);
+                return Results.Problem(ex.Message);
+            }
+        }
+
+        public async Task<IResult> GetFarmCropByCropIdAsync(Guid id)
+        {
+            try
+            {
+                var farmCrop = await _farmCropService.GetFarmCropByCropIdAsync(id, "Farm", "Zone.Soil", "Crop.DefaultUnit").ConfigureAwait(false);
                 return farmCrop is not null ? Results.Ok(farmCrop) : Results.NotFound();
             }
             catch (Exception ex)

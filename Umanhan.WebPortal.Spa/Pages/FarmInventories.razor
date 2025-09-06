@@ -6,9 +6,10 @@
 @inject InventoryService InventoryService
 @inject UnitService UnitService
 @inject SystemSettingService SystemSettingService
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
 @inject FarmActivityUsageService FarmActivityUsageService
 @inject IValidator<FarmInventoryDto> Validator
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Farm.Full">
     <ChildContent>
@@ -142,7 +143,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     private IList<FarmInventoryDto> selectedInventoryItems = [];
     private IEnumerable<FarmInventoryDto> farmInventoryItems = [];
@@ -280,7 +281,7 @@
             return;
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         ResetGrid1(inventoryObj);
 
@@ -328,7 +329,7 @@
             if (confirm == true)
             {
                 var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
                 var obj = await FarmInventoryService.DeleteFarmInventoryAsync(inventoryObj.FarmInventoryId).ConfigureAwait(false);
                 if (obj is not null)
@@ -378,7 +379,7 @@
             return;
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         inventoryObj.FarmId = farmId;
         var obj = await FarmInventoryService.CreateFarmInventoryAsync(inventoryObj).ConfigureAwait(false);

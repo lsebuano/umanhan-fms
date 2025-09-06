@@ -1,5 +1,5 @@
 ﻿
-<link href="~/css/invoice.css" rel="stylesheet" />
+<link href="css/invoice.css" rel="stylesheet" />
 
 <header>
     <div>
@@ -9,8 +9,8 @@
         <div class="small">TIN: @ContractPayment.FarmTin</div>
     </div>
     <div class="umh-text-align-right">
-        <strong>Payment Receipt</strong>
-        <div class="small">Receipt No.: @ContractPayment.ReceiptNo</div>
+        <strong>Sales Invoice</strong>
+        <div class="small">SI No.: @ContractPayment.ReceiptNo</div>
         <div class="small">Date: @ContractPayment.Date</div>
     </div>
 </header>
@@ -48,7 +48,7 @@
 <section class="footer small">
     Received by: @ContractPayment.ReceivedBy<br />
     Printed by: @ContractPayment.PrintedBy — @ContractPayment.PrintTimestamp<br />
-    Note: This receipt is for record and audit purposes. Buyer may issue BIR Form 2304 as substitute official receipt where applicable.
+    Note: This invoice is for record and audit purposes. Buyer may issue BIR Form 2304 as substitute official receipt where applicable.
 </section>
 
 @code {

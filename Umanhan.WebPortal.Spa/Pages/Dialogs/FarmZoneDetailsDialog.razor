@@ -153,7 +153,7 @@
         {
             ShowTitle = false,
             CloseDialogOnEsc = false,
-            Style = "min-height:auto;min-width:auto;width:auto"
+            CssClass = "umh-rz-dialog-size"
         });
 
         try
@@ -222,7 +222,7 @@
                 {
                     ShowTitle = false,
                     CloseDialogOnEsc = false,
-                    Style = "min-height:auto;min-width:auto;width:auto"
+                CssClass = "umh-rz-dialog-size"
                 });
 
             var response = await FarmCropService.GetFarmCropByIdAsync(FarmCropId).ConfigureAwait(false);

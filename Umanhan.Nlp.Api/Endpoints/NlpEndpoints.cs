@@ -1,12 +1,9 @@
-﻿using OpenAI.Chat;
+﻿using Microsoft.AspNetCore.OutputCaching;
 using OpenAI;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Umanhan.Models.Models;
-using Microsoft.AspNetCore.OutputCaching;
-using System.Text.Json;
-using System.Threading;
+using OpenAI.Chat;
 using System.Text;
+using System.Text.Json;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.Nlp.Api.Endpoints
 {
