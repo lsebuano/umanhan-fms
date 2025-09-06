@@ -8,7 +8,8 @@
 @inject ProductService ProductService
 @inject UnitService UnitService
 @inject IValidator<QuotationProductDto> Validator
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Farm.Write">
     <ChildContent>
@@ -177,7 +178,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     RadzenDataGrid<QuotationProductDto> productsGrid;
     // RadzenDataGrid<QuotationDto> quotationsGrid;
@@ -341,7 +342,7 @@
         };
 
         var task = DialogService.OpenAsync("", ds =>@<BusyDialog /> ,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         var response = await QuotationService.CreateAndSendQuotationAsync(paramsModel).ConfigureAwait(false);
         if (response == "SUCCESS")

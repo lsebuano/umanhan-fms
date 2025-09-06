@@ -1,9 +1,5 @@
-﻿using System.Diagnostics;
-using System.Net.Http.Headers;
-using System.Net.Http;
-using System.Security.Claims;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Models;
+﻿using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.WebPortal.Spa.Services
 {

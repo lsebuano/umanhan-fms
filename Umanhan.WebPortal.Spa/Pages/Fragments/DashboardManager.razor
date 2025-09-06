@@ -3,8 +3,9 @@
 @inject NavigationManager NavigationManager
 @inject FarmZoneService FarmZoneService
 @inject FarmService FarmService
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
 @inject DialogService DialogService
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Farm.Read">
     <ChildContent>
@@ -47,7 +48,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     private string farmName = "Loading...";
     private Guid farmId;

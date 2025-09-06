@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
+﻿using Umanhan.Dtos;
 
 namespace Umanhan.Repositories.Interfaces
 {

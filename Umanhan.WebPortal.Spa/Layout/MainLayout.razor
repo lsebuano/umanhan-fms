@@ -1,4 +1,5 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.ComponentModel
+@inherits LayoutComponentBase
 @inject IJSRuntime JSRuntime
 @inject SystemSettingService SystemSettingService
 @inject NavigationManager NavigationManager
@@ -6,6 +7,7 @@
 @inject WebAppSetting Setting
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject UserStateService UserState
+@inject WebAppSetting Settings
 
 <RadzenComponents />
 
@@ -21,7 +23,7 @@
 
                     <AuthorizeView>
                         <Authorized>
-                            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+                            <RadzenSidebarToggle Click="@(() => {sidebarExpanded = !sidebarExpanded; hideSidebarClass = "";})" />
                         </Authorized>
                     </AuthorizeView>
 
@@ -42,7 +44,7 @@
                 <Authorized>
                     <RadzenPanelMenuItem Text="Dashboard" Icon="dashboard" Path="/" title="Dashboard" />
 
-                    @if (setupComplete)
+                    @if (Convert.ToBoolean(Setting.IsFarmSetupComplete))
                     {
                         <PermissionView Permission="Farm.Full">
                             @* <RadzenPanelMenuItem Text="Farm Map" Icon="map" Path="farm-map" title="Farm Map" /> *@
@@ -122,11 +124,11 @@
 </RadzenLayout>
 
 @code {
-    private WebAppSetting Settings = new();
+    // private WebAppSetting Settings = new();
 
     bool sidebarExpanded = false;
 
-    private Guid farmId;
+    //private Guid farmId;
     private string farmName;
     private string currentUserId;
     private bool setupComplete;
@@ -143,7 +145,8 @@
     protected override async Task OnInitializedAsync()
     {
         sidebarExpanded = false;
-        farmId = Setting.FarmId; // <-- this is from the scoped object (appsettings)
+        //farmId = Setting.FarmId; // <-- this is from the scoped object (appsettings)
+        Setting.PropertyChanged += OnSettingsChanged;
 
         await UserState.WhenReady;
 
@@ -163,7 +166,7 @@
             {
                 Console.WriteLine($"MainLayout:OnAfterRenderAsync:Retrying {retries}x...");
                 retries++;
-                await Task.Delay(900); // wait for auth to finish loading
+                await Task.Delay(1000); // wait for auth to finish loading
             }
             Console.WriteLine($"MainLayout:OnAfterRenderAsync:UserState.IsReady {UserState.IsReady}");
             if (UserState.IsReady)
@@ -177,20 +180,32 @@
         }
     }
 
+    private void OnSettingsChanged(object sender, PropertyChangedEventArgs e)
+    {
+        // Force layout to refresh when Settings updates
+        InvokeAsync(StateHasChanged);
+    }
+
     private void RefreshUserState()
     {
         isAuthenticated = UserState.IsAuthenticated;
         isSuperAdmin = isAuthenticated && UserState.IsSuperAdmin;
         isAuthChecked = true;
+        Console.WriteLine($"RefreshUserState:isAuthenticated: {isAuthenticated}");
+        Console.WriteLine($"RefreshUserState:isSuperAdmin: {isSuperAdmin}");
+        Console.WriteLine($"RefreshUserState:isAuthChecked: {isAuthChecked}");
     }
 
     private async Task LoadFarmDetails()
     {
         Console.WriteLine($"MainLayout:LoadFarmDetails");
+        Console.WriteLine($"MainLayout:LoadFarmDetails:Setting.FarmId: {Setting.FarmId}");
         var response = await FarmService.GetFarmByIdAsync(Setting.FarmId).ConfigureAwait(false);
         if (response.IsSuccess)
         {
             showSidebar();
+
+            Console.WriteLine($"MainLayout:LoadFarmDetails:response.IsSuccess: true");
 
             var farm = response.Data;
             farmName = farm.FarmName;
@@ -242,5 +257,6 @@
     public void Dispose()
     {
         UserState.OnChange -= StateHasChanged;
+        Setting.PropertyChanged -= OnSettingsChanged;
     }
 }

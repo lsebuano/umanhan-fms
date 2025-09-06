@@ -6,9 +6,9 @@
 @inject AppNotificationService NotificationService
 @inject SystemSettingService SystemSettingService
 @inject NavigationManager NavigationManager
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
 @inject UserStateService UserState
-@inject WebAppSetting Setting
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Farm.Full">
     <ChildContent>
@@ -23,10 +23,7 @@
                 <RadzenBadge BadgeStyle="BadgeStyle.Primary" Variant="Variant.Outlined" IsPill=true Text="@farmName" class="rz-mb-3" Visible="@(!string.IsNullOrEmpty(farmName))" />
             </RadzenStack>
         </RadzenRow>
-        @if(UserState.IsSuperAdmin)
-        {
-            <span>Superadmin</span>
-        }
+
         <RadzenScheduler @ref=@scheduler SlotRender=@OnSlotRender class="umh-height-768px" TItem="FarmActivityDto" Data=@activities
                          StartProperty="StartDateTime" EndProperty="EndDateTime" ShowHeader="true" TextProperty="Task" SelectedIndex="2"
                          SlotSelect=@OnSlotSelect AppointmentSelect=@OnAppointmentSelect AppointmentRender=@OnAppointmentRender
@@ -42,7 +39,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
     [Parameter] public Guid ActivityId { get; set; }
     
     [Parameter]
@@ -116,7 +113,7 @@
     {
         //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
 
-        farmId = Setting.FarmId;
+        farmId = Settings.FarmId;
         farmName = Settings.FarmName;
 
         // if (farmId == Guid.Empty)
@@ -137,7 +134,8 @@
         // Highlight today in month view
         if (args.View.Text == "Month" && args.Start.Date == DateTime.Today)
         {
-            args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
+            //args.Attributes["style"] = "background: var(--rz-scheduler-highlight-background-color, rgba(255,220,40,.2));";
+            args.Attributes["class"] = "umh-rz-scheduler-appointment-current";
         }
 
         //// Highlight working hours (9-18)
@@ -199,7 +197,7 @@
                     {
                         Width = "95vw",
                         Height = "80vh",
-                        Style = "min-width: 900px;"
+                        CssClass = "umh-rz-dialog-size-min-width-900px"
                     });
 
             if (data != null)
@@ -239,7 +237,7 @@
                 {
                     Width = "95vw",
                     Height = "80vh",
-                    Style = "min-width: 900px;"
+                    CssClass = "umh-rz-dialog-size-min-width-900px"
                 });
 
         if (data != null)
@@ -268,26 +266,15 @@
         //Console.WriteLine(">>>>>>>>>>>>>OnAppointmentRender");
         // Never call StateHasChanged in AppointmentRender - would lead to infinite loop
 
-        // if (args.Data.Status == "Completed")
-        // {
-        //     args.Attributes["style"] = "background: green";
-        // }
-        // else if (args.Data.Status == "In Progress")
-        // {
-        //     args.Attributes["style"] = "background: orange";
-        // }
-        // else if (args.Data.Status == "Not Started")
-        // {
-        //     args.Attributes["style"] = "background: blue";
-        // }
-
         if (args.Data.StartDateTime <= dateToday && args.Data.EndDateTime >= dateToday)
         {
-            args.Attributes["style"] = "background: var(--rz-success)";
+            //args.Attributes["style"] = "background: var(--rz-success)";
+            args.Attributes["class"] = "umh-rz-scheduler-appointment-active";
         }
         else if (args.Data.StartDateTime < dateToday)
         {
-            args.Attributes["style"] = "background: var(--rz-secondary-dark)";
+            //args.Attributes["style"] = "background: var(--rz-secondary-dark)";
+            args.Attributes["class"] = "umh-rz-scheduler-appointment-past";
         }
     }
 

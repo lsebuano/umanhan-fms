@@ -1,14 +1,6 @@
-﻿using Azure;
-using FluentValidation;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
-using System.Text.Json;
-using System.Threading;
-using Umanhan.Masterdata.Api;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Models;
+﻿using FluentValidation;
+using Umanhan.Dtos;
 using Umanhan.Services;
-using Umanhan.Services.Interfaces;
 
 namespace Umanhan.Masterdata.Api.Endpoints
 {

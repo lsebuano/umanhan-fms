@@ -1,8 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
+using Umanhan.Dtos;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services.Interfaces;
 

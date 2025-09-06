@@ -10,7 +10,7 @@
 @inject FarmTransactionService FarmTransactionService
 @inject TooltipService TooltipService
 @inject IValidator<FarmTransactionDto> Validator
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
 
 <PermissionView Permission="Cashier.Full">
     <ChildContent>
@@ -285,7 +285,7 @@
     private string inventoriesLoading = "Loading...";
     private string transactionTypesLoading = "Loading...";
     private string buyerText = "Name";
-    private Models.Models.TransactionType transactionType = TransactionType.SALE;
+    private Dtos.HelperModels.TransactionType transactionType = TransactionType.SALE;
     private Dictionary<Guid, bool> toggleStates = new();
     private WebAppSetting Settings;
     private bool hasLoadedSecondaryData = false;
@@ -324,14 +324,7 @@
     {
         if (FarmId == Guid.Empty)
         {
-            Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
-            if (Settings != null)
-            {
-                FarmId = Settings.FarmId;
-                FarmName = Settings.FarmName;
-
-                StateHasChanged();
-            }
+            await Settings.LoadAsync().ConfigureAwait(false);
         }
 
         if (transactionTypeId == Guid.Empty)
@@ -446,7 +439,7 @@
 
         bool isSuccess = false;
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         try
         {
@@ -538,7 +531,7 @@
         var type = transactionTypes.FirstOrDefault(x => x.TypeId == typeId);
         if (type != null)
         {
-            transactionType = (Models.Models.TransactionType)Enum.Parse(typeof(Models.Models.TransactionType), type.TransactionTypeName.ToUpper());
+            transactionType = (Dtos.HelperModels.TransactionType)Enum.Parse(typeof(Dtos.HelperModels.TransactionType), type.TransactionTypeName.ToUpper());
 
             // update context
             transactionTypeId = type.TypeId;

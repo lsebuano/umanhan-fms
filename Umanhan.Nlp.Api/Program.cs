@@ -15,6 +15,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using Umanhan.Nlp.Api;
 using Umanhan.Models;
+using Umanhan.Dtos.HelperModels;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();

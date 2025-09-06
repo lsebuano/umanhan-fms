@@ -1,8 +1,6 @@
-﻿using Amazon.SimpleEmail;
-using FluentValidation;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
+﻿using FluentValidation;
+using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 using Umanhan.Services;
 
 namespace Umanhan.Operations.Api.Endpoints

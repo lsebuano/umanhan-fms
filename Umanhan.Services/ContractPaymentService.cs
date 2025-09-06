@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
-using Umanhan.Models.Dtos;
+using Umanhan.Dtos;
 using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services.Interfaces;
+using Umanhan.Shared;
 using Umanhan.Shared.Utils;
 
 namespace Umanhan.Services

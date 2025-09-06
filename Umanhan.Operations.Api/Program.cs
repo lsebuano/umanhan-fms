@@ -1,8 +1,4 @@
-using Amazon;
-using Amazon.Extensions.NETCore.Setup;
-using Amazon.Runtime;
 using Amazon.S3;
-using Amazon.SimpleEmail;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,11 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SendGrid;
+using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
+using Umanhan.Dtos.Validators;
 using Umanhan.Models;
 using Umanhan.Models.Attributes;
-using Umanhan.Models.Dtos;
 using Umanhan.Models.Models;
-using Umanhan.Models.Validators;
 using Umanhan.Operations.Api;
 using Umanhan.Operations.Api.Endpoints;
 using Umanhan.Repositories;
@@ -284,6 +281,10 @@ farmCropGroup.MapGet("/", (FarmCropEndpoints endpoint) => endpoint.GetAllFarmCro
 
 farmCropGroup.MapGet("/{id}", (FarmCropEndpoints endpoint, Guid id) => endpoint.GetFarmCropByIdAsync(id))
     .WithMetadata(new RequiresPermissionAttribute("Farm.Read"))
+    .RequireAuthorization("Permission");
+
+farmCropGroup.MapGet("/crop/{id}", (FarmCropEndpoints endpoint, Guid id) => endpoint.GetFarmCropByCropIdAsync(id))
+    .WithMetadata(new RequiresPermissionAttribute("Farm.Write"))
     .RequireAuthorization("Permission");
 
 farmCropGroup.MapPost("/", (FarmCropEndpoints endpoint, FarmCropDto farmCrop) => endpoint.CreateFarmCropAsync(farmCrop))

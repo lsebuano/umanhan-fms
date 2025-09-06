@@ -12,10 +12,12 @@
   <ItemGroup>
     <Compile Remove="AuthStateProvider.cs" />
     <Compile Remove="CustomScopeAuthorizationAttribute.cs" />
+    <Compile Remove="Services\WebAppSettingService.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Blazored.FluentValidation" Version="2.2.0" />
+    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
     <PackageReference Include="FluentValidation" Version="12.0.0" />
     <PackageReference Include="Kralizek.Extensions.Configuration.AWSSecretsManager" Version="1.7.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Abstractions" Version="2.3.0" />
@@ -27,6 +29,7 @@
     <PackageReference Include="Microsoft.Authentication.WebAssembly.Msal" Version="8.0.13" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="8.0.1" />
     <PackageReference Include="Radzen.Blazor" Version="6.2.8" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.1.2" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
@@ -35,7 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Umanhan.Models\Umanhan.Models.csproj" />
+    <ProjectReference Include="..\Umanhan.Dtos\Umanhan.Dtos.csproj" />
   </ItemGroup>
 
   <ItemGroup>

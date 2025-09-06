@@ -1,17 +1,10 @@
-﻿
-using Amazon.Runtime;
-using FluentValidation;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
+﻿using FluentValidation;
 using Npgsql;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Text.RegularExpressions;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Models;
+using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 using Umanhan.Services;
-using static System.Net.WebRequestMethods;
 
 namespace Umanhan.Reports.Api.Endpoints
 {

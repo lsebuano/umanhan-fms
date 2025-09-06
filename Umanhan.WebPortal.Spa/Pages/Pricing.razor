@@ -7,9 +7,10 @@
 @inject DialogService DialogService
 @inject SystemSettingService SystemSettingService
 @inject FarmService FarmService
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
 @inject IValidator<PricingProfileDto> Validator
 @inject IValidator<PricingDto> ValidatorDetail
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Farm.Full">
     <ChildContent>
@@ -150,7 +151,7 @@
 </PermissionView>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
 
     RadzenDataGrid<PricingDto> pricingGrid;
     IEnumerable<PricingDto> pricingConditions;
@@ -202,77 +203,13 @@
 
                 InvokeAsync(StateHasChanged); // Safely update the UI after background work
             });
-
-            // _ = Task.Run(async () =>
-            // {
-            //     // Wait for farmId to be resolved (polling + timeout)
-            //     var maxWaitMs = 3000;
-            //     var intervalMs = 50;
-            //     var waitedMs = 0;
-
-            //     while (farmId == Guid.Empty && waitedMs < maxWaitMs)
-            //     {
-            //         await Task.Delay(intervalMs);
-            //         waitedMs += intervalMs;
-            //     }
-
-            //     if (farmId == Guid.Empty)
-            //     {
-            //         Console.WriteLine("Farm ID is still empty after waiting. Skipping dependent API calls.");
-            //         return;
-            //     }
-
-            //     await LoadPricingProfiles().ConfigureAwait(false);
-            //     await LoadConditionTypes().ConfigureAwait(false);
-
-            //     await InvokeAsync(StateHasChanged); // UI update
-            // });
-
-            // farmId = await _farmIdTcs.Task; // await until it's available
-
-            // await LoadPricingProfiles().ConfigureAwait(false);
-            // await LoadConditionTypes().ConfigureAwait(false);
-
-            // await InvokeAsync(StateHasChanged);
         }
     }
 
     async Task LoadSettings()
     {
-        // farmId = Settings.FarmId;
-        // farmName = Settings.FarmName ?? "Loading...";
-
-        // if (farmId == Guid.Empty)
-        // {
-        //     Console.WriteLine("Settings.FarmId is empty. Attempting to load system settings.");
-
-        //     await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
-
-        //     farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
-
-        //     if (farmId == Guid.Empty)
-        //     {
-        //         Console.WriteLine("SystemSettingService.GetSetting<Guid> returned an empty GUID.");
-        //     }
-        //     else
-        //     {
-        //         Console.WriteLine($"Loaded farmId from system settings: {farmId}");
-        //     }
-        // }
-
-        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
-
         farmId = Settings.FarmId;
         farmName = Settings.FarmName ?? "Loading...";
-
-        // if (farmId == Guid.Empty)
-        // {
-        //     await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
-        //     farmId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_FARM.ToString());
-        // }
-
-        // if (!_farmIdTcs.Task.IsCompleted)
-        //     _farmIdTcs.SetResult(farmId);
     }
 
     async Task LoadPricingProfiles()
@@ -354,7 +291,7 @@
             return;
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         Reset(pricing);
 
@@ -392,7 +329,7 @@
         if (confirm == true)
         {
             var task = DialogService.OpenAsync("", ds =>@<BusyDialog />               ,
-            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
             Reset(pricing);
 
@@ -449,7 +386,7 @@
             return;
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         pricing.ProfileId = profileId;
         var newObj = await PricingService.CreatePricingAsync(pricing).ConfigureAwait(false);
@@ -494,7 +431,7 @@
             return;
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         ResetProfile(profile);
 
@@ -532,7 +469,7 @@
         if (confirm == true)
         {
             var task = DialogService.OpenAsync("", ds =>@<BusyDialog />               ,
-            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+            new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
             ResetProfile(profile);
 
@@ -589,7 +526,7 @@
             return;
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         profile.FarmId = farmId;
         await PricingProfileService.CreatePricingProfileAsync(profile).ConfigureAwait(false);

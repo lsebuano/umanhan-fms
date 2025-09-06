@@ -1,26 +1,20 @@
 
 using Amazon;
 using Amazon.CognitoIdentityProvider;
-using Amazon.CognitoIdentityProvider.Model;
-using Amazon.Runtime;
-using Amazon.SimpleEmail;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SendGrid;
-using StackExchange.Redis;
 using System.Security.Claims;
+using Umanhan.Dtos;
+using Umanhan.Dtos.Validators;
 using Umanhan.Models;
 using Umanhan.Models.Attributes;
-using Umanhan.Models.Dtos;
 using Umanhan.Models.Models;
-using Umanhan.Models.Validators;
 using Umanhan.Repositories;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services;
@@ -80,10 +74,10 @@ builder.Services.AddSingleton<IAmazonCognitoIdentityProvider>(sp =>
     return new AmazonCognitoIdentityProviderClient(RegionEndpoint.USEast1);
 });
 
-builder.Services.AddScoped<UserStateService>(sp =>
+builder.Services.AddScoped<UserStateServiceForService>(sp =>
 {
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-    return new UserStateService(httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal());
+    return new UserStateServiceForService(httpContextAccessor.HttpContext?.User ?? new ClaimsPrincipal());
 });
 
 //builder.Services.AddSingleton<IAmazonSimpleEmailService, AmazonSimpleEmailServiceClient>();
@@ -217,7 +211,7 @@ roleGroup.MapGet("/active", (RoleEndpoints endpoint) => endpoint.GetAllRolesAsyn
     .WithMetadata(new RequiresPermissionAttribute("User.Read"))
     .RequireAuthorization("Permission");
 
-roleGroup.MapGet("/except", (UserStateService userState, RoleEndpoints endpoint) => endpoint.GetRolesExceptAsync(userState))
+roleGroup.MapGet("/except", (UserStateServiceForService userState, RoleEndpoints endpoint) => endpoint.GetRolesExceptAsync(userState))
 .WithMetadata(new RequiresPermissionAttribute("User.Read"))
 .RequireAuthorization("Permission");
 

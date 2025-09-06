@@ -68,7 +68,7 @@
         await JSRuntime.InvokeVoidAsync("console.log", "LoadRoles...");
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         var response = await RoleService.GetAllCognitoGroupsAsync().ConfigureAwait(false);
         if (response.IsSuccess)
@@ -115,7 +115,7 @@
 
         bool isSuccess = false;
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         try
         {

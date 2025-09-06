@@ -174,7 +174,7 @@ RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1" Filter="@Res
     async Task OnUpdateRowGrid1(FarmActivityLaborerDto cost)
     {
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         ResetGrid1(cost);
 
@@ -224,7 +224,7 @@ RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1" Filter="@Res
             if (confirm == true)
             {
                 var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-                    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
                 var obj = await FarmActivityLaborerService.DeleteFarmActivityLaborAsync(cost.LaborActivityId).ConfigureAwait(false);
                 if (obj is not null)
@@ -272,7 +272,7 @@ RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1" Filter="@Res
     async Task OnCreateRowGrid1(FarmActivityLaborerDto cost)
     {
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         try
         {

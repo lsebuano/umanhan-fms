@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.OutputCaching;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading;
-using Umanhan.Models.LoggerEntities;
-using Umanhan.Models.Models;
+using Umanhan.Dtos.HelperModels;
 using Umanhan.Services;
+using Umanhan.Shared;
 
 namespace Umanhan.Weather.Api.Endpoints
 {

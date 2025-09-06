@@ -124,7 +124,7 @@
     async Task OnUpdateRowGrid1(FarmActivityUsageDto expense1)
     {
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         ResetGrid1(expense1);
 
@@ -168,7 +168,7 @@
             if (confirm == true)
             {
                 var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+                new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
                 var obj = await FarmActivityUsageService.DeleteFarmActivityUsageAsync(expense1.UsageId).ConfigureAwait(false);
                 if (obj is not null)
@@ -217,7 +217,7 @@
     async Task OnCreateRowGrid1(FarmActivityUsageDto expense1)
     {
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         expense1.FarmId = Model.FarmId;
         expense1.ActivityId = Model.ActivityId;

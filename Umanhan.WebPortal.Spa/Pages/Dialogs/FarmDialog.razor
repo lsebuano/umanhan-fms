@@ -4,7 +4,7 @@
 @inject AppNotificationService NotificationService
 @inject NavigationManager NavigationManager
 @inject IValidator<FarmDto> Validator
-@inject WebAppSettingService AppSettingService
+@* @inject WebAppSettingService AppSettingService *@
 
 <RadzenStack Gap="1rem" Orientation="Orientation.Vertical" JustifyContent="JustifyContent.SpaceBetween" class="umh-height-100">
     <RadzenRow>
@@ -87,7 +87,7 @@
 </RadzenStack>
 
 @code {
-    [CascadingParameter] WebAppSetting Settings { get; set; }
+    // [CascadingParameter] WebAppSetting Settings { get; set; }
     [Parameter] public Guid ObjId { get; set; }
     [Parameter] public bool ShowClose { get; set; }
 
@@ -159,7 +159,7 @@
 
         bool isSuccess = false;
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         try
         {
@@ -183,7 +183,7 @@
                 message = "Save successful.";
                 isSuccess = true;
 
-                Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
+                //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
 
                 // Console.WriteLine($"Settings: {JsonConvert.SerializeObject(Settings)}");
 

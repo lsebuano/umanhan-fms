@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Umanhan.Models.Dtos;
+﻿using Umanhan.Dtos;
 
 namespace Umanhan.Services.Interfaces
 {

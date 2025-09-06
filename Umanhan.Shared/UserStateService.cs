@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Umanhan.Shared
 {
-    public class UserStateService
+    public class UserStateServiceForService
     {
         private readonly ClaimsPrincipal _user;
 
@@ -25,7 +25,7 @@ namespace Umanhan.Shared
             }
         }
 
-        public UserStateService(ClaimsPrincipal user)
+        public UserStateServiceForService(ClaimsPrincipal user)
         {
             _user = user;
         }

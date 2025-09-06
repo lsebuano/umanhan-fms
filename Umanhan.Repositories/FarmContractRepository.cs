@@ -1,15 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Umanhan.Dtos;
 using Umanhan.Models;
-using Umanhan.Models.Dtos;
 using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
 using Umanhan.Repositories.Interfaces;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Umanhan.Repositories
 {

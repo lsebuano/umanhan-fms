@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
-using Umanhan.Models.Dtos;
+using Umanhan.Dtos;
 using Umanhan.Models.Entities;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services.Interfaces;
@@ -80,6 +78,14 @@ namespace Umanhan.Services
         public async Task<FarmCropDto> GetFarmCropByIdAsync(Guid id, params string[] includeEntities)
         {
             var obj = await _unitOfWork.FarmCrops.GetByIdAsync(id, includeEntities).ConfigureAwait(false);
+            if (obj == null)
+                return null;
+            return ToFarmCropDto(obj);
+        }
+
+        public async Task<FarmCropDto> GetFarmCropByCropIdAsync(Guid id, params string[] includeEntities)
+        {
+            var obj = await _unitOfWork.FarmCrops.GetByCropAsync(id, includeEntities).ConfigureAwait(false);
             if (obj == null)
                 return null;
             return ToFarmCropDto(obj);

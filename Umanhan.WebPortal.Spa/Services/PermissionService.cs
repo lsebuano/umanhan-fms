@@ -1,7 +1,4 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
-using Umanhan.Models.Models;
 using Umanhan.WebPortal.Spa.Services.Interfaces;
 
 namespace Umanhan.WebPortal.Spa.Services

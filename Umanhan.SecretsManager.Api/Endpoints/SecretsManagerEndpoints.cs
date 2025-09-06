@@ -1,14 +1,8 @@
-﻿using Amazon;
-using Amazon.SecretsManager;
+﻿using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
-using Microsoft.AspNetCore.DataProtection;
-using System.ComponentModel.DataAnnotations;
-using System.Security;
 using System.Text;
 using System.Text.Json;
-using Umanhan.Models.Models;
-using Umanhan.Services.Interfaces;
-using static System.Net.WebRequestMethods;
+using Umanhan.Dtos.HelperModels;
 
 namespace Umanhan.SecretsManager.Api.Endpoints
 {

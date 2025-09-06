@@ -171,7 +171,7 @@
         //Console.WriteLine(">>>>>>>>>>>>>OnInitializedAsync");
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-    new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         await LoadTypes().ConfigureAwait(false);
         await LoadTasks().ConfigureAwait(false);
@@ -193,7 +193,7 @@
 
     async Task GetProductFarmZone()
     {
-        var response = await FarmCropService.GetFarmCropByIdAsync(Model.ProductId).ConfigureAwait(false);
+        var response = await FarmCropService.GetFarmCropByCropIdAsync(Model.ProductId).ConfigureAwait(false);
         if (response.IsSuccess)
         {
             var farmCrop = response.Data;
@@ -266,7 +266,7 @@
         isSaving = true;
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
-        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, Style = "min-height:auto;min-width:auto;width:auto" });
+        new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
         try
         {

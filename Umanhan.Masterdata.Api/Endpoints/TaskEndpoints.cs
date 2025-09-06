@@ -1,9 +1,6 @@
 ﻿using FluentValidation;
-using Umanhan.Masterdata.Api;
-using Umanhan.Models.Dtos;
-using Umanhan.Models.Entities;
+using Umanhan.Dtos;
 using Umanhan.Services;
-using Umanhan.Services.Interfaces;
 
 namespace Umanhan.Masterdata.Api.Endpoints
 {
