@@ -446,3 +446,6 @@ FodyWeavers.xsd
 /UmanhanImageThumbnailer/lambda-deploy.zip
 /UmanhanImageThumbnailer/klayers-us-east-1-p3.12.csv
 /UmanhanImageThumbnailer/readme.txt
+/Umanhan.WebPortal.Spa/wwwroot/appsettings.Development.json
+/Umanhan.WebPortal.Spa/wwwroot/appsettings.Production.json
+/Umanhan.WebPortal.Spa/wwwroot/appsettings.Staging.json
