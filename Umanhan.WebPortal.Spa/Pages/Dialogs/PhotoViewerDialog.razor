@@ -1,9 +1,19 @@
 ﻿@inject DialogService DialogService
+@inject IJSRuntime JSRuntime
 
 @if (ImageUrls?.Any() == true)
 {
     <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center">
-        <RadzenImage Path="@ImageUrls[CurrentIndex].Url" Click="Next" class="umh-preview-image" />
+        <div class="umh-image-container">
+            <RadzenImage Path="@ImageUrls[CurrentIndex].Url" Click="Next" class="umh-preview-image" />
+            <!-- Download button overlay -->
+            <RadzenButton Icon="download"
+                          class="umh-download-button"
+                          ButtonStyle="ButtonStyle.Light"
+                          Size="ButtonSize.Small"
+                          title="Download image"
+                          Click="() => DownloadImage(ImageUrls[CurrentIndex].Url)" />
+        </div>
         <RadzenText Text="@ImageUrls[CurrentIndex].Notes" class="rz-color-base-800 umh-comment-text" />
     </RadzenStack>
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" class="rz-mt-5">
@@ -19,7 +29,7 @@
     [Parameter] public string DefaultImageUrl { get; set; }
 
     private int CurrentIndex { get; set; } = 0;
-    
+
     protected override void OnParametersSet()
     {
         if (ImageUrls?.Count > 0)
@@ -34,6 +44,12 @@
                 CurrentIndex = 0;
             }
         }
+    }
+
+    void DownloadImage(string url)
+    {
+        var filename = System.IO.Path.GetFileName(url);
+        JSRuntime.InvokeVoidAsync("downloadFile", url, filename);
     }
 
     void Close()

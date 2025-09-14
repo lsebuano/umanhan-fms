@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class PricingConditionTypeDto
+    public class PricingConditionTypeDto : BaseDto
     {
         public Guid ConditionId { get; set; }
 

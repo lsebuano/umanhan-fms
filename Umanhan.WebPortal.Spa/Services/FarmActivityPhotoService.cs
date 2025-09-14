@@ -129,7 +129,7 @@ namespace Umanhan.WebPortal.Spa.Services
                 string contentType = file.ContentType;
                 //string filename = Uri.EscapeDataString($"{key}{extension}");
 
-                if (file.Size > 2 * 1024 * 1024) // 2 MB limit
+                if (file.Size > maxAllowedSizeInBytes) // 2 MB limit
                 {
                     throw new InvalidOperationException("File size exceeds the maximum allowed size of 2 MB.");
                 }

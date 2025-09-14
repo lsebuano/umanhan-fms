@@ -67,6 +67,8 @@ namespace Umanhan.Repositories.Interfaces
         IFarmContractPaymentRepository FarmContractPayments { get; }
         IFarmNumberSeryRepository FarmNumberSeries { get; }
 
+        IFarmGeneralExpenseReceiptRepository FarmGeneralExpenseReceipts { get; }
+
         Task<int> CommitAsync();
         Task<int> CommitAsync(string username);
     }

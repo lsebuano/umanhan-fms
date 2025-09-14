@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class PaymentTypeDto
+    public class PaymentTypeDto : BaseDto
     {
         public Guid PaymentTypeId { get; set; }
 

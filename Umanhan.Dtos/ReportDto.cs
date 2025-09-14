@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class ReportDto
+    public class ReportDto : BaseDto
     {
 
     }

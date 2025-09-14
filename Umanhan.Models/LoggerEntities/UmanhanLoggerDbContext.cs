@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Umanhan.Models.Entities;
 
 namespace Umanhan.Models.LoggerEntities;
 
@@ -13,9 +12,8 @@ public partial class UmanhanLoggerDbContext : DbContext
     }
 
     //public virtual DbSet<ChangeLog> ChangeLogs { get; set; }
-
+    public virtual DbSet<EfQueryLog> EfQueryLogs { get; set; }
     public virtual DbSet<Log> Logs { get; set; }
-
     public virtual DbSet<UserActivity> UserActivities { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -90,6 +88,48 @@ public partial class UmanhanLoggerDbContext : DbContext
             entity.Property(e => e.Username)
                 .HasMaxLength(200)
                 .HasColumnName("username");
+        });
+
+        modelBuilder.Entity<EfQueryLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("ef_query_logs_pkey");
+
+            entity.ToTable("ef_query_logs");
+
+            entity.HasIndex(e => e.ApiEndpoint, "idx_ef_query_logs_api_endpoint");
+
+            entity.HasIndex(e => e.CreatedAt, "idx_ef_query_logs_created_at").IsDescending();
+
+            entity.HasIndex(e => e.DurationMs, "idx_ef_query_logs_duration_ms").IsDescending();
+
+            entity.HasIndex(e => e.FarmId, "idx_ef_query_logs_farm_id");
+
+            entity.Property(e => e.Id).HasColumnName("query_id");
+            entity.Property(e => e.ApiEndpoint).HasColumnName("api_endpoint");
+            entity.Property(e => e.CorrelationId).HasColumnName("correlation_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DurationMs).HasColumnName("duration_ms");
+            entity.Property(e => e.Environment)
+                .HasMaxLength(50)
+                .HasDefaultValueSql("'Prod'::character varying")
+                .HasColumnName("environment");
+            entity.Property(e => e.FarmId).HasColumnName("farm_id");
+            entity.Property(e => e.HttpMethod)
+                .HasMaxLength(10)
+                .HasColumnName("http_method");
+            entity.Property(e => e.Parameters)
+                .HasColumnType("jsonb")
+                .HasColumnName("parameters");
+            entity.Property(e => e.Query)
+                .IsRequired()
+                .HasColumnName("query");
+            entity.Property(e => e.RowsReturned).HasColumnName("rows_returned");
+            entity.Property(e => e.Source)
+                .HasDefaultValueSql("'EFCore'::text")
+                .HasColumnName("source");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
         });
 
         OnModelCreatingPartial(modelBuilder);

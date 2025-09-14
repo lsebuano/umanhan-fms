@@ -109,100 +109,100 @@
         <RadzenRow class="rz-mt-5">
             <RadzenColumn SizeMD="5">
                 <div class="full-height-container">
-                    <RadzenTemplateForm TItem="FarmContractDto" EditContext="@editContext">
-                        <FluentValidationValidator Validator="@Validator" />
+                    <RadzenDataGrid @ref="farmContractGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false"
+                                    FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="15" AllowPaging="true"
+                                    PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true" Data="@objList" ColumnWidth="160px"
+                                    LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
+                                    @bind-Value=@selectedObjList EditMode="DataGridEditMode.Single" TItem="FarmContractDto"
+                                    RowUpdate="@OnUpdateRowGrid1" RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1"
+                                    Filter="@ResetGrid1" RowSelect="@OnRowSelect" class="umh-height-57vh">
+                        <EmptyTemplate>
+                            <p class="umh-no-records">No records to display.</p>
+                        </EmptyTemplate>
+                        <HeaderTemplate>
+                            <RadzenStack Orientation="Orientation.Horizontal">
+                                <RadzenButton Text="New Contract" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@InsertRowGrid1 />
 
-                        <RadzenDataGrid @ref="farmContractGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false"
-                                        FilterMode="FilterMode.Advanced" AllowSorting="true" PageSize="15" AllowPaging="true"
-                                        PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true" Data="@objList" ColumnWidth="160px"
-                                        LogicalFilterOperator="LogicalFilterOperator.Or" SelectionMode="DataGridSelectionMode.Single"
-                                        @bind-Value=@selectedObjList EditMode="DataGridEditMode.Single" TItem="FarmContractDto"
-                                        RowUpdate="@OnUpdateRowGrid1" RowCreate="@OnCreateRowGrid1" Sort="@ResetGrid1" Page="@ResetGrid1"
-                                        Filter="@ResetGrid1" RowSelect="@OnRowSelect" class="umh-height-57vh" >
-                            <EmptyTemplate>
-                                <p class="umh-no-records">No records to display.</p>
-                            </EmptyTemplate>
-                            <HeaderTemplate>
-                                <RadzenStack Orientation="Orientation.Horizontal">
-                                    <RadzenButton Text="New Contract" Icon="add" ButtonStyle="ButtonStyle.Primary" Click=@InsertRowGrid1 />
-
-                                    <div class="rz-ms-auto">
-                                        @if (showActiveRange)
-                                        {
-                                            <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Icon="filter_alt" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Lighter">
-                                                <ChildContent>
-                                                    <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
-                                                    <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
-                                                    <RadzenSplitButtonItem Text="Last Year" Value="LastYear" />
-                                                    <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
-                                                </ChildContent>
-                                            </RadzenSplitButton>
-                                        }
-                                        else
-                                        {
-                                            <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Variant="Variant.Text" Icon="filter_alt">
-                                                <ChildContent>
-                                                    <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
-                                                    <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
-                                                    <RadzenSplitButtonItem Text="Last Year" Value="LastYear" />
-                                                    <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
-                                                </ChildContent>
-                                            </RadzenSplitButton>
-                                        }
-                                    </div>
-                                </RadzenStack>
-                                <RadzenStack AlignItems="AlignItems.End">
-                                    <RadzenCard Variant="Variant.Outlined" class="rz-mt-2 umh-badge">
-                                        <RadzenText TextStyle="TextStyle.Caption">@activeRangeMessage</RadzenText>
-                                    </RadzenCard>
-                                </RadzenStack>
-                            </HeaderTemplate>
-                            <Columns>
-                                <RadzenDataGridColumn Context="contract" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right" Width="150px">
-                                    <Template Context="contract">
-                                        @if (!contract.IsCancelled && !contract.IsPaid)
-                                        {
-                                            <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowGrid1(contract))" @onclick:stopPropagation="true" />
-                                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(contract))" @onclick:stopPropagation="true" />
-                                        }
-                                        @if (contract.IsPaid)
-                                        {
-                                            <RadzenButton Icon="receipt" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => PrintReceipt(contract))" @onclick:stopPropagation="true" title="Print Receipt" />
-                                        }
-                                    </Template>
-                                    <EditTemplate Context="contract">
-                                        <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowGrid1(contract))" aria-label="Save" />
-                                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditGrid1(contract))" aria-label="Cancel" />
-                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(contract))" aria-label="Delete" />
-                                    </EditTemplate>
-                                </RadzenDataGridColumn>
-                                <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.Status)" Title="Status" Width="130px">
-                                    <Template Context="contract">
-                                        <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@contract.Status" />
-                                    </Template>
-                                </RadzenDataGridColumn>
-                                <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.CustomerName)" Title="Customer" Width="200px">
-                                    <EditTemplate Context="contract">
+                                <div class="rz-ms-auto">
+                                    @if (showActiveRange)
+                                    {
+                                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Icon="filter_alt" Variant="Variant.Flat" ButtonStyle="ButtonStyle.Primary" Shade="Shade.Lighter">
+                                            <ChildContent>
+                                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                                <RadzenSplitButtonItem Text="Last Year" Value="LastYear" />
+                                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                                            </ChildContent>
+                                        </RadzenSplitButton>
+                                    }
+                                    else
+                                    {
+                                        <RadzenSplitButton Click="@(args => OnPresetClicked(args))" Variant="Variant.Text" Icon="filter_alt">
+                                            <ChildContent>
+                                                <RadzenSplitButtonItem Text="This Month" Value="ThisMonth" />
+                                                <RadzenSplitButtonItem Text="Last 6 Months" Value="Last6Months" />
+                                                <RadzenSplitButtonItem Text="Last Year" Value="LastYear" />
+                                                <RadzenSplitButtonItem Text="Custom Range" Value="Custom" />
+                                            </ChildContent>
+                                        </RadzenSplitButton>
+                                    }
+                                </div>
+                            </RadzenStack>
+                            <RadzenStack AlignItems="AlignItems.End">
+                                <RadzenCard Variant="Variant.Outlined" class="rz-mt-2 umh-badge">
+                                    <RadzenText TextStyle="TextStyle.Caption">@activeRangeMessage</RadzenText>
+                                </RadzenCard>
+                            </RadzenStack>
+                        </HeaderTemplate>
+                        <Columns>
+                            <RadzenDataGridColumn Context="contract" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Frozen="true" FrozenPosition="FrozenColumnPosition.Right" Width="150px">
+                                <Template Context="contract">
+                                    @if (!contract.IsCancelled && !contract.IsPaid)
+                                    {
+                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@(args => EditRowGrid1(contract))" @onclick:stopPropagation="true" />
+                                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(contract))" @onclick:stopPropagation="true" />
+                                    }
+                                    @if (contract.IsPaid)
+                                    {
+                                        <RadzenButton Icon="receipt" ButtonStyle="ButtonStyle.Info" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => PrintReceipt(contract))" @onclick:stopPropagation="true" title="Print Receipt" />
+                                    }
+                                </Template>
+                                <EditTemplate Context="contract">
+                                    <RadzenButton Icon="check" ButtonStyle="ButtonStyle.Success" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@((args) => SaveRowGrid1(contract))" aria-label="Save" />
+                                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" class="rz-my-1 rz-ms-1" Click="@((args) => CancelEditGrid1(contract))" aria-label="Cancel" />
+                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Shade="Shade.Lighter" class="rz-my-1 rz-ms-1" Click="@(args => DeleteRowGrid1(contract))" aria-label="Delete" />
+                                </EditTemplate>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.Status)" Title="Status" Width="130px">
+                                <Template Context="contract">
+                                    <RadzenBadge BadgeStyle="BadgeStyle.Light" Text="@contract.Status" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.CustomerName)" Title="Customer" Width="200px">
+                                <EditTemplate Context="contract">
+                                    <RadzenTemplateForm Data="@contract" EditContext="@GetEditContext(contract)">
                                         <RadzenDropDown @bind-Value="@contract.CustomerId" Data=@customers TextProperty="CustomerName" Placeholder="Select customer/partner" ValueProperty="CustomerId"
                                                         class="umh-width-100" Name="CustomerId" />
                                         <ValidationMessage For="@(() => contract.CustomerId)" />
-                                    </EditTemplate>
-                                </RadzenDataGridColumn>
-                                <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.ContractDate)" Width="180px" FormatString="{0:MM/dd/yyyy}">
-                                    <HeaderTemplate>
-                                        <div class="umh-text-align-center">
-                                            Contract<br />
-                                            <span>Date</span>
-                                        </div>
-                                    </HeaderTemplate>
-                                    <EditTemplate Context="contract">
+                                    </RadzenTemplateForm>
+                                </EditTemplate>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn Context="contract" Property="@nameof(FarmContractDto.ContractDate)" Width="180px" FormatString="{0:MM/dd/yyyy}">
+                                <HeaderTemplate>
+                                    <div class="umh-text-align-center">
+                                        Contract<br />
+                                        <span>Date</span>
+                                    </div>
+                                </HeaderTemplate>
+                                <EditTemplate Context="contract">
+                                    <RadzenTemplateForm Data="@contract" EditContext="@GetEditContext(contract)">
                                         <RadzenDatePicker @bind-Value=@contract.ContractDate Name="ContractDate" ShowCalendarWeek ShowTime=false DateFormat="MM/dd/yyyy" />
                                         <ValidationMessage For="@(() => contract.ContractDate)" />
-                                    </EditTemplate>
-                                </RadzenDataGridColumn>
-                            </Columns>
-                        </RadzenDataGrid>
-                    </RadzenTemplateForm>
+                                    </RadzenTemplateForm>
+                                </EditTemplate>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
                 </div>
             </RadzenColumn>
             <RadzenColumn SizeMD="7">
@@ -407,12 +407,12 @@
 @code {
     // [CascadingParameter] WebAppSetting Settings { get; set; }
 
-    private IEnumerable<FarmContractDto>? objList;
+    private IEnumerable<FarmContractDto>? objList = new List<FarmContractDto>();
     private IList<FarmContractDto> selectedObjList = new List<FarmContractDto>();
     private IList<FarmContractDetailDto> selectedDetails = new List<FarmContractDetailDto>();
     private List<CustomerDto> customers = new();
 
-    EditContext editContext;
+    // EditContext editContext;
     RadzenDataGrid<FarmContractDto> farmContractGrid;
     RadzenDataGrid<FarmContractDetailDto> detailsGrid;
 
@@ -460,6 +460,9 @@
     FarmContractDetailDto selectedDetail;
     FarmContractDto selectedMaster;
 
+    Dictionary<FarmContractDto, EditContext> editContexts = new();
+    Dictionary<EditContext, ValidationMessageStore> stores = new();
+
     private DateTime today = DateTime.Today;
     private DateTime startDate;
     private DateTime endDate;
@@ -474,7 +477,7 @@
     {
         await base.OnInitializedAsync().ConfigureAwait(false);
 
-        editContext = new EditContext(new FarmContractDto());
+        // editContext = new EditContext(new FarmContractDto());
         // await ShowLoading().ConfigureAwait(false);
         await LoadSettings().ConfigureAwait(false);
     }
@@ -498,23 +501,20 @@
         }
     }
 
+    EditContext GetEditContext(FarmContractDto contract)
+    {
+        if (!editContexts.TryGetValue(contract, out var context))
+        {
+            context = new EditContext(contract);
+            editContexts[contract] = context;
+        }
+        return context;
+    }
+
     async Task LoadSettings()
     {
-        //int maxRetries = 5;
-        //int retryCount = 0;
-        //do
-        //{
-        //Settings = await AppSettingService.LoadAsync().ConfigureAwait(false);
-
         farmId = Settings.FarmId;
         farmName = Settings.FarmName;
-
-        //if (farmId == Guid.Empty)
-        //{
-        //    retryCount++;
-        //    await Task.Delay(1000); // wait 1 second before retry
-        //}
-        //} while (farmId == Guid.Empty && retryCount < maxRetries);
 
         if (farmId == Guid.Empty)
         {
@@ -522,14 +522,40 @@
         }
     }
 
-    private async Task ShowLoading()
+    async Task ShowLoading()
     {
         isLoading = true;
         await Task.Yield();
         isLoading = false;
     }
 
-    private async Task LoadList()
+    bool ValidateRow(FarmContractDto contract)
+    {
+        var editContext = GetEditContext(contract);
+
+        if (!stores.TryGetValue(editContext, out var store))
+        {
+            store = new ValidationMessageStore(editContext);
+            stores[editContext] = store;
+        }
+        store.Clear();
+
+        var result = Validator.Validate(contract);
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                store.Add(editContext.Field(error.PropertyName), error.ErrorMessage);
+            }
+
+            editContext.NotifyValidationStateChanged();
+            return false;
+        }
+
+        return true;
+    }
+
+    async Task LoadList()
     {
         // var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
         // new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
@@ -542,7 +568,7 @@
             if (obj == null)
                 obj = new FarmContractDto();
 
-            editContext = new EditContext(obj);
+            // editContext = new EditContext(obj);
             selectedObjList = new List<FarmContractDto>() { obj };
 
             selectedMaster = obj;
@@ -751,6 +777,9 @@
 
     async Task OnUpdateRowGrid1(FarmContractDto contractObj)
     {
+        if (!ValidateRow(contractObj))
+            return;
+
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
         new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });
 
@@ -771,6 +800,9 @@
 
     async Task SaveRowGrid1(FarmContractDto contractObj)
     {
+        if (!ValidateRow(contractObj))
+            return;
+
         contractObj.FarmId = farmId;
         await farmContractGrid.UpdateRow(contractObj);
     }
@@ -892,11 +924,17 @@
 
     async Task OnCreateRowGrid1(FarmContractDto contractObj)
     {
-        if (!editContext.Validate())
-        {
-            Console.WriteLine("Form validation failed!");
+        // Console.WriteLine($"FarmContracts:OnCreateRowGrid1:contractObj: {contractObj}");
+
+        // editContext = new EditContext(contractObj);
+        // if (!editContext.Validate())
+        // {
+        //     Console.WriteLine("Form validation failed!");
+        //     return;
+        // }
+
+        if (!ValidateRow(contractObj))
             return;
-        }
 
         var task = DialogService.OpenAsync("", ds => @<BusyDialog />,
         new DialogOptions { ShowTitle = false, CloseDialogOnEsc = false, CssClass = "umh-rz-dialog-size" });

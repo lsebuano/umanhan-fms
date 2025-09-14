@@ -11,6 +11,7 @@ public partial class ExpenseType : IEntity
     public Guid Id { get; set; }
 
     public string ExpenseTypeName { get; set; }
+    public string Group { get; set; }
 
     public virtual ICollection<FarmActivityExpense> FarmActivityExpenses { get; set; } = [];
     public virtual ICollection<FarmGeneralExpense> FarmGeneralExpenses { get; set; } = [];

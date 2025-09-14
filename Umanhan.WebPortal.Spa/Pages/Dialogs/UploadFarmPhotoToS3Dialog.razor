@@ -2,6 +2,7 @@
 @inject DialogService DialogService
 @inject FarmInventoryService FarmInventoryService
 @inject FarmActivityPhotoService FarmActivityPhotoService
+@inject IJSRuntime JSRuntime
 
 <RadzenCard Variant="Variant.Outlined">
     <RadzenStack Orientation="Orientation.Vertical">
@@ -37,9 +38,35 @@
     {
         foreach (var file in args.Files)
         {
-            if (file.Size > 2 * 1024 * 1024) // 2 MB
+            // Validate file size
+            var sizeLimit = 2 * 1024 * 1024; // 2 MB
+            if (file.Size > sizeLimit)
             {
                 await NotificationService.ShowError("File is too large (max 2 MB)", "Error").ConfigureAwait(false);
+                return;
+            }
+            // Validate file type
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                await NotificationService.ShowError("Invalid file type.", "Error");
+                return;
+            }
+            
+            // 
+            using var stream = file.OpenReadStream(maxAllowedSize: sizeLimit);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+
+            // Validate image by loading it in JavaScript
+            var isValid = await JSRuntime.InvokeAsync<bool>(
+                "validateImage",
+                $"data:{file.ContentType};base64,{base64}"
+            );
+            if (!isValid)
+            {
+                await NotificationService.ShowError("This image appears to be corrupted and cannot be uploaded.", "Error");
                 return;
             }
         }

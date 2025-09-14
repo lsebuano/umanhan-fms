@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos;
 
-public class LogDto
+public class LogDto : BaseDto
 {
     public Guid LogId { get; set; }
 

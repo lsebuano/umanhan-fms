@@ -75,7 +75,7 @@ namespace Umanhan.Operations.Api.Endpoints
 
         public async Task<IResult> CreateFarmActivityAsync(FarmActivityDto farmActivity)
         {
-            var validationResult = await _validator.ValidateAsync(farmActivity).ConfigureAwait(false);
+            var validationResult = await _validator.ValidateAsync(farmActivity, o => o.IncludeRuleSets("Create")).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
                 return Results.ValidationProblem(validationResult.ToDictionary());
@@ -100,7 +100,7 @@ namespace Umanhan.Operations.Api.Endpoints
                 return Results.BadRequest("Farm Activity ID mismatch");
             }
 
-            var validationResult = await _validator.ValidateAsync(farmActivity).ConfigureAwait(false);
+            var validationResult = await _validator.ValidateAsync(farmActivity, o => o.IncludeRuleSets("Update")).ConfigureAwait(false);
             if (!validationResult.IsValid)
             {
                 return Results.ValidationProblem(validationResult.ToDictionary());

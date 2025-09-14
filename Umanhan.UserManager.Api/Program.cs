@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SendGrid;
+using System.Diagnostics;
 using System.Security.Claims;
 using Umanhan.Dtos;
 using Umanhan.Dtos.Validators;
@@ -22,12 +23,14 @@ using Umanhan.Services.Interfaces;
 using Umanhan.Shared;
 using Umanhan.UserManager.Api;
 using Umanhan.UserManager.Api.Endpoints;
+using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
 //builder.Services.AddAWSService<IAmazonSimpleEmailService>();
@@ -41,11 +44,15 @@ builder.Services.AddValidatorsFromAssemblyContaining<RolePermissionValidator>();
 builder.Services.AddFluentValidationAutoValidation();
 
 builder.Services.AddDbContextPool<UmanhanDbContext>(options =>
-    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING"), o =>
+    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? throw new InvalidOperationException("Missing CONNECTION_STRING"), o =>
     {
         // execution strategy
         o.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-    }));
+    })
+    .LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information)
+    .EnableSensitiveDataLogging()
+    .EnableDetailedErrors()
+);
 
 //// Redis (Valkey) connection
 //builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
@@ -110,7 +117,7 @@ builder.Services.AddScoped<RolePermissionService>();
 
 builder.Services.AddScoped<RoleService>();
 builder.Services.AddScoped<ModuleService>();
-//builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<SystemSettingService>();
 //builder.Services.AddScoped<UserService>();
 //builder.Services.AddScoped<ClaimService>();
 
@@ -163,7 +170,6 @@ builder.Services
 
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
-builder.Services.AddHttpContextAccessor();
 //builder.Services.AddAuthorization();
 builder.Services.AddAuthorization(options =>
 {
@@ -179,6 +185,18 @@ builder.Logging.AddConsole(); // for AWS CloudWatch
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi); // for AWS Lambda
 
 var app = builder.Build();
+
+// Resolve IHttpContextAccessor from final DI container
+var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+var connectionStringLogs = Environment.GetEnvironmentVariable("CONNECTION_STRING_LOGS")
+    ?? throw new InvalidOperationException("Missing CONNECTION_STRING_LOGS");
+
+// Create EF Query Logger
+var efQueryLogger = new EfCoreQueryLogger(connectionStringLogs, httpContextAccessor);
+
+// Subscribe to the **global EF Core listener**, not a new one
+var diagnosticObserver = new EfCoreDiagnosticObserver(efQueryLogger);
+DiagnosticListener.AllListeners.Subscribe(diagnosticObserver);
 
 // Configure the HTTP request pipeline.
 //app.UsePathBase(apiPathBase);

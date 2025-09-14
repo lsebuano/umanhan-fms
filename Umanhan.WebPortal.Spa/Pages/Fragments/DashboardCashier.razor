@@ -11,6 +11,7 @@
 @inject TooltipService TooltipService
 @inject IValidator<FarmTransactionDto> Validator
 @* @inject WebAppSettingService AppSettingService *@
+@inject WebAppSetting Settings
 
 <PermissionView Permission="Cashier.Full">
     <ChildContent>
@@ -287,7 +288,6 @@
     private string buyerText = "Name";
     private Dtos.HelperModels.TransactionType transactionType = TransactionType.SALE;
     private Dictionary<Guid, bool> toggleStates = new();
-    private WebAppSetting Settings;
     private bool hasLoadedSecondaryData = false;
 
     protected override async Task OnInitializedAsync()
@@ -322,9 +322,12 @@
 
     async Task LoadSettings()
     {
+        Console.WriteLine($"DashboardCashier:LoadSettings...");
         if (FarmId == Guid.Empty)
         {
             await Settings.LoadAsync().ConfigureAwait(false);
+            FarmId = Settings.FarmId;
+            FarmName = Settings.FarmName;
         }
 
         if (transactionTypeId == Guid.Empty)
@@ -332,6 +335,11 @@
             await SystemSettingService.LoadSystemSettings().ConfigureAwait(false);
             transactionTypeId = SystemSettingService.GetSetting<Guid>(SettingName.DEFAULT_TRANSACTION_TYPE.ToString());
         }
+
+        Console.WriteLine($"DashboardCashier:LoadSettings:FarmId: {FarmId}");
+        Console.WriteLine($"DashboardCashier:LoadSettings:FarmName: {FarmName}");
+
+        StateHasChanged();
     }
 
     private async Task LoadUnits()
@@ -434,6 +442,7 @@
         if (obj.Quantity > stock)
         {
             await DialogService.Alert($"Not enough stock.", "Quantity");
+            isSaving = false;
             return;
         }
 

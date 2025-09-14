@@ -18,6 +18,7 @@ namespace Umanhan.Services
             {
                 TypeId = x.Id,
                 ExpenseTypeName = x.ExpenseTypeName,
+                Group = x.Group,
             })
             .OrderBy(x => x.ExpenseTypeName)];
         }
@@ -28,6 +29,7 @@ namespace Umanhan.Services
             {
                 TypeId = expenseType.Id,
                 ExpenseTypeName = expenseType.ExpenseTypeName,
+                Group = expenseType.Group,
             };
         }
 
@@ -59,6 +61,7 @@ namespace Umanhan.Services
             var newExpenseType = new ExpenseType
             {
                 ExpenseTypeName = expenseType.ExpenseTypeName,
+                Group = expenseType.Group,
             };
 
             try
@@ -77,6 +80,7 @@ namespace Umanhan.Services
         {
             var expenseTypeEntity = await _unitOfWork.ExpenseTypes.GetByIdAsync(expenseType.TypeId).ConfigureAwait(false) ?? throw new KeyNotFoundException("ExpenseType not found.");
             expenseTypeEntity.ExpenseTypeName = expenseType.ExpenseTypeName;
+            expenseTypeEntity.Group = expenseType.Group;
 
             try
             {

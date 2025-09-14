@@ -41,7 +41,7 @@
 @code {
     // [CascadingParameter] WebAppSetting Settings { get; set; }
     [Parameter] public Guid ActivityId { get; set; }
-    
+
     [Parameter]
     [SupplyParameterFromQuery]
     public string Mode { get; set; }
@@ -189,6 +189,9 @@
         if (response.IsSuccess)
         {
             FarmActivityDto obj = response.Data;
+
+            Console.WriteLine($">>>>>>>>>>>>>OpenSlotDialogEdit: Activity={obj.ToString()}");
+
             FarmActivityDto data = await DialogService.OpenAsync<EditAppointmentPageDialog>("Edit Activity",
                 new Dictionary<string, object> {
                 { "Model", obj }
@@ -212,6 +215,7 @@
     async Task OnAppointmentSelect(SchedulerAppointmentSelectEventArgs<FarmActivityDto> args)
     {
         //Console.WriteLine($">>>>>>>>>>>>>ActivitySelect: Activity={args.Data.Task}");
+        Console.WriteLine($"FarmActivities:OnAppointmentSelect:args.data: {args.Data.ToString()}");
 
         var copy = new FarmActivityDto
             {
@@ -269,12 +273,12 @@
         if (args.Data.StartDateTime <= dateToday && args.Data.EndDateTime >= dateToday)
         {
             //args.Attributes["style"] = "background: var(--rz-success)";
-            args.Attributes["class"] = "umh-rz-scheduler-appointment-active";
+            args.Attributes["class"] = "rz-event-content umh-rz-scheduler-appointment-active";
         }
         else if (args.Data.StartDateTime < dateToday)
         {
             //args.Attributes["style"] = "background: var(--rz-secondary-dark)";
-            args.Attributes["class"] = "umh-rz-scheduler-appointment-past";
+            args.Attributes["class"] = "rz-event-content umh-rz-scheduler-appointment-past";
         }
     }
 

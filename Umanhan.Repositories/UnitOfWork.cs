@@ -79,6 +79,8 @@ namespace Umanhan.Repositories
         public IFarmContractPaymentRepository FarmContractPayments { get; private set; }
         public IFarmNumberSeryRepository FarmNumberSeries { get; private set; }
 
+        public IFarmGeneralExpenseReceiptRepository FarmGeneralExpenseReceipts { get; private set; }
+
         public UnitOfWork(UmanhanDbContext context)
         {
             _context = context;
@@ -143,6 +145,8 @@ namespace Umanhan.Repositories
 
             FarmContractPayments = new FarmContractPaymentRepository(_context);
             FarmNumberSeries = new FarmNumberSeryRepository(_context);
+
+            FarmGeneralExpenseReceipts = new FarmGeneralExpenseReceiptRepository(_context);
         }
 
         public async Task<int> CommitAsync()

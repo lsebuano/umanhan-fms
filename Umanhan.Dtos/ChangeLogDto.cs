@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos;
 
-public class ChangeLogDto
+public class ChangeLogDto : BaseDto
 {
     public Guid ChangeId { get; set; }
 

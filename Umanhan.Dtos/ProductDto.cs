@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class ProductDto
+    public class ProductDto : BaseDto
     {
         public Guid ProductId { get; set; }
 

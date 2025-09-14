@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
-using System.ComponentModel.DataAnnotations;
-using Umanhan.Services.Interfaces;
+﻿using Umanhan.Services.Interfaces;
 
 namespace Umanhan.Logs.Api.Endpoints
 {
@@ -19,8 +17,8 @@ namespace Umanhan.Logs.Api.Endpoints
         {
             try
             {
-                var categories = await _changeLogService.GetChangeLogsAsync(date).ConfigureAwait(false);
-                return Results.Ok(categories);
+                var logs = await _changeLogService.GetChangeLogsAsync(date).ConfigureAwait(false);
+                return Results.Ok(logs);
             }
             catch (Exception ex)
             {

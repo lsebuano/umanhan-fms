@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class FarmContractPaymentDetailsDto
+    public class FarmContractPaymentDetailsDto : BaseDto
     {
         public string Item { get; set; }
         public decimal Quantity { get; set; }

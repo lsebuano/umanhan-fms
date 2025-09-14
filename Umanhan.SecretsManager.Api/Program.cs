@@ -1,12 +1,9 @@
-using Amazon.SecretsManager;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using StackExchange.Redis;
+using System.Diagnostics;
 using Umanhan.Models;
 using Umanhan.Models.Attributes;
 using Umanhan.Models.Models;
@@ -16,6 +13,7 @@ using Umanhan.SecretsManager.Api;
 using Umanhan.SecretsManager.Api.Endpoints;
 using Umanhan.Services;
 using Umanhan.Services.Interfaces;
+using Umanhan.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,14 +24,18 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddMemoryCache();
 builder.Services.AddOutputCache();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContextPool<UmanhanDbContext>(options =>
-    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING"), o =>
+    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? throw new InvalidOperationException("Missing CONNECTION_STRING"), o =>
     {
         // execution strategy
         o.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-        o.CommandTimeout(10);
-    }));
+    })
+    .LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information)
+    .EnableSensitiveDataLogging()
+    .EnableDetailedErrors()
+);
 
 //Console.WriteLine($"Umanhan.SecretsManager.Api:2");
 //// Redis (Valkey) connection
@@ -126,7 +128,6 @@ builder.Services
 
 //Console.WriteLine($"Umanhan.SecretsManager.Api:9");
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
-builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Permission", policy =>
@@ -142,6 +143,19 @@ builder.Logging.AddConsole(); // for AWS CloudWatch
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi); // for AWS Lambda
 
 var app = builder.Build();
+
+// Resolve IHttpContextAccessor from final DI container
+var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+var connectionStringLogs = Environment.GetEnvironmentVariable("CONNECTION_STRING_LOGS")
+    ?? throw new InvalidOperationException("Missing CONNECTION_STRING_LOGS");
+
+// Create EF Query Logger
+var efQueryLogger = new EfCoreQueryLogger(connectionStringLogs, httpContextAccessor);
+
+// Subscribe to the **global EF Core listener**, not a new one
+var diagnosticObserver = new EfCoreDiagnosticObserver(efQueryLogger);
+DiagnosticListener.AllListeners.Subscribe(diagnosticObserver);
+
 app.UseRouting();
 
 app.UseHttpsRedirection();

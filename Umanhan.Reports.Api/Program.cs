@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Diagnostics;
 using Umanhan.Dtos;
 using Umanhan.Dtos.Validators;
 using Umanhan.Models;
@@ -17,6 +18,7 @@ using Umanhan.Repositories;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services;
 using Umanhan.Services.Interfaces;
+using Umanhan.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -27,6 +29,7 @@ builder.Services.AddAWSService<IAmazonS3>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpContextAccessor();
 
 // In-memory cache
 builder.Services.AddMemoryCache();
@@ -35,14 +38,17 @@ builder.Services.AddMemoryCache();
 builder.Services.AddValidatorsFromAssemblyContaining<ReportValidator>();
 
 builder.Services.AddFluentValidationAutoValidation();
-builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContextPool<UmanhanDbContext>(options =>
-    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING"), o =>
+    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? throw new InvalidOperationException("Missing CONNECTION_STRING"), o =>
     {
         // execution strategy
         o.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-    }));
+    })
+    .LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information)
+    .EnableSensitiveDataLogging()
+    .EnableDetailedErrors()
+);
 
 // repositories
 builder.Services.AddScoped(typeof(IRepository<>), typeof(UmanhanRepository<>));
@@ -126,6 +132,18 @@ builder.Services.AddAuthorization(options => {
 });
 
 var app = builder.Build();
+
+// Resolve IHttpContextAccessor from final DI container
+var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+var connectionStringLogs = Environment.GetEnvironmentVariable("CONNECTION_STRING_LOGS")
+    ?? throw new InvalidOperationException("Missing CONNECTION_STRING_LOGS");
+
+// Create EF Query Logger
+var efQueryLogger = new EfCoreQueryLogger(connectionStringLogs, httpContextAccessor);
+
+// Subscribe to the **global EF Core listener**, not a new one
+var diagnosticObserver = new EfCoreDiagnosticObserver(efQueryLogger);
+DiagnosticListener.AllListeners.Subscribe(diagnosticObserver);
 
 // Configure the HTTP request pipelinec.
 app.UsePathBase(apiPathBase);

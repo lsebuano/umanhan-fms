@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class TaskDto
+    public class TaskDto : BaseDto
     {
         public Guid TaskId { get; set; }
 

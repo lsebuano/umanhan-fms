@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class PermissionDto
+    public class PermissionDto : BaseDto
     {
         public Guid PermissionId { get; set; }
 

@@ -692,3 +692,26 @@ footer {
     width: 100%;
 }
 
+/* override OK button color for datetimepicker */
+.rz-timepicker > .rz-button {
+    color: var(--rz-secondary-darker) !important;
+}
+
+.umh-image-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* Download button is hidden by default */
+.umh-download-button {
+    position: absolute !important;
+    top: 8px;
+    right: 8px;
+    opacity: 0;
+    transition: opacity 0.3s ease !important;
+}
+
+/* Show on hover */
+.umh-image-container:hover .umh-download-button {
+    opacity: 1 !important;
+}

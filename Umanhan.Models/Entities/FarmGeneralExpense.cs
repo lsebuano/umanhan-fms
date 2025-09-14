@@ -25,4 +25,6 @@ public partial class FarmGeneralExpense : IEntity
     public virtual ExpenseType ExpenseType { get; set; }
 
     public virtual Farm Farm { get; set; }
+
+    public virtual ICollection<FarmGeneralExpenseReceipt> FarmGeneralExpenseReceipts { get; set; } = [];
 }

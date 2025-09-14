@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos;
 
-public partial class FarmKpiSummaryDto
+public partial class FarmKpiSummaryDto : BaseDto
 {
     public Guid FarmId { get; set; }
 

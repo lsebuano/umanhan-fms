@@ -1,0 +1,104 @@
+﻿@inject AppNotificationService NotificationService
+@inject DialogService DialogService
+@inject FarmGeneralExpenseReceiptService FarmGeneralExpenseReceiptService
+
+@if (photos.Any())
+{
+    if (IsEditMode)
+    {
+        <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Base" Text="Attach Receipts"
+                      Size="ButtonSize.Medium" Click="@(OpenDialog)" />
+    }
+    <RadzenStack Orientation="Orientation.Horizontal" Wrap=FlexWrap.Wrap>
+        @foreach (var photo in photos)
+        {
+            <RadzenCard Variant="Variant.Outlined" class="rz-mt-3 rz-me-3 umh-square-thumbnail">
+                <RadzenStack Orientation="Orientation.Vertical" AlignItems="AlignItems.Center">
+                    <RadzenImage Path="@photo.ReceiptUrlThumbnail" class="umh-clickable-banner" Click="@(() => PreviewPhoto(photo.ReceiptUrlFull))" />
+                    <RadzenText Text="@photo.Notes" class="umh-text-ellipsis-left" />
+                    @if (IsEditMode)
+                    {
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" title="Delete receipt" Click="@(() => DeletePhoto(photo))" />
+                    }
+                </RadzenStack>
+            </RadzenCard>
+        }
+    </RadzenStack>
+}
+else
+{
+    if (IsEditMode)
+    {
+        <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Base" Text="Attach Receipts"
+                      Size="ButtonSize.Medium" Click="@(OpenDialog)" />
+    }
+}
+
+@code {
+    [Parameter]
+    public FarmGeneralExpenseDto Model { get; set; }
+    [Parameter]
+    public bool IsEditMode { get; set; }
+
+    private List<FarmGeneralExpenseReceiptDto> photos = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadPhotos().ConfigureAwait(false);
+    }
+
+    async Task LoadPhotos()
+    {
+        var response = await FarmGeneralExpenseReceiptService.GetFarmGeneralExpenseReceiptByGeneralExpenseAsync(Model.ExpenseId).ConfigureAwait(false);
+        if (response.IsSuccess)
+        {
+            photos = response.Data.ToList();
+        }
+    }
+
+    private async Task OpenDialog()
+    {
+        var result = await DialogService.OpenAsync<UploadFarmGEReceiptToS3Dialog>("Attach Receipts",
+                    new Dictionary<string, object> { { "ExpenseId", Model.ExpenseId }, { "AllowMultiple", true } },
+                    new DialogOptions()
+                    {
+                        Width = "60vw",
+                        Height = "50vh",
+                    });
+        // refresh grid if the dialog returns true
+        if (result != null)
+        {
+            photos.Add(result);
+            StateHasChanged();
+        }
+    }
+
+    async Task DeletePhoto(FarmGeneralExpenseReceiptDto receipt)
+    {
+        var confirm = await DialogService.Confirm("Are you sure you want to delete this receipt?", "Confirm Delete", new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No" });
+        if (confirm.HasValue && confirm.Value)
+        {
+            await FarmGeneralExpenseReceiptService.DeleteFarmGeneralExpenseReceiptAsync(receipt.ReceiptId).ConfigureAwait(false);
+            photos.Remove(receipt);
+
+            _ = NotificationService.ShowSuccess("Photo deleted successfully.", "Success");
+        }
+    }
+
+    async Task PreviewPhoto(string imageUrl)
+    {
+        await DialogService.OpenAsync<PhotoViewerDialog>("Photo Viewer",
+        new Dictionary<string, object>() {
+            { "ImageUrls", photos.Select(x => new PhotoItem{
+                Url = x.ReceiptUrlFull,
+                Notes = x.Notes
+            }).ToList() },
+            { "DefaultImageUrl", imageUrl }
+        },
+        new DialogOptions()
+        {
+            Width = "900px",
+            Height = "650px"
+        });
+    }
+}

@@ -1,6 +1,5 @@
 ﻿@page "/"
 @attribute [Authorize]
-@* @inject WebAppSettingService AppSettingService *@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject FarmService FarmService
 @inject WebAppSetting Settings
@@ -24,11 +23,7 @@ else
 }
 
 @code {
-    // [CascadingParameter] WebAppSetting Settings { get; set; }
-
     private bool isFarmSetupComplete = false;
-    //private bool isFarmSetupStarted = false;
-    //private Guid farmId;
     private string farmName = "Loading...";
 
     private bool isLoaded = false;
@@ -42,7 +37,6 @@ else
 
     protected override async Task OnParametersSetAsync()
     {
-        //Console.WriteLine($"IsLoaded: {Settings.IsLoaded}, IsFarmSetupComplete: {Settings.IsFarmSetupComplete}");
         Console.WriteLine($"IsLoaded: {isLoaded}, IsFarmSetupComplete: {isFarmSetupComplete}");
         if (isFarmSetupComplete)
         {

@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos;
 
-public partial class QuotationDetailDto
+public partial class QuotationDetailDto : BaseDto
 {
     public Guid DetailId { get; set; }
 

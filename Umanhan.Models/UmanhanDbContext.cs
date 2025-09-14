@@ -109,6 +109,8 @@ public partial class UmanhanDbContext : DbContext
     public virtual DbSet<FarmContractPayment> FarmContractPayments { get; set; }
     public virtual DbSet<FarmContractPaymentDetail> FarmContractPaymentDetails { get; set; }
 
+    public virtual DbSet<FarmGeneralExpenseReceipt> FarmGeneralExpenseReceipts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Category>(entity =>
@@ -244,6 +246,9 @@ public partial class UmanhanDbContext : DbContext
             entity.Property(e => e.ExpenseTypeName)
                 .IsRequired()
                 .HasColumnName("expense_type_name");
+
+            entity.Property(e => e.Group)
+                .HasColumnName("group");
         });
 
         modelBuilder.Entity<Farm>(entity =>
@@ -1730,6 +1735,36 @@ public partial class UmanhanDbContext : DbContext
                 .HasForeignKey(d => d.FarmId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("farm_number_series_farm_id_fkey");
+        });
+
+        modelBuilder.Entity<FarmGeneralExpenseReceipt>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("farm_general_expense_receipts_pkey");
+
+            entity.ToTable("farm_general_expense_receipts");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("receipt_id");
+            entity.Property(e => e.GeneralExpenseId).HasColumnName("general_expense_id");
+            entity.Property(e => e.MimeType)
+                .IsRequired()
+                .HasColumnName("mime_type");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.ReceiptUrlFull)
+                .IsRequired()
+                .HasColumnName("receipt_url_full");
+            entity.Property(e => e.ReceiptUrlThumbnail)
+                .IsRequired()
+                .HasColumnName("receipt_url_thumbnail");
+            entity.Property(e => e.Timestamp)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("timestamp");
+
+            entity.HasOne(d => d.FarmGeneralExpense).WithMany(p => p.FarmGeneralExpenseReceipts)
+                .HasForeignKey(d => d.GeneralExpenseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("farm_general_expense_receipts_general_expense_id_fkey");
         });
 
         OnModelCreatingPartial(modelBuilder);

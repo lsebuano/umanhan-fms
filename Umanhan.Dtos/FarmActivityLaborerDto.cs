@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class FarmActivityLaborerDto
+    public class FarmActivityLaborerDto : BaseDto
     {
         public Guid LaborActivityId { get; set; }
 

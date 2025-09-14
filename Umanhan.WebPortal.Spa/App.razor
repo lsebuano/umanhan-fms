@@ -1,41 +1,51 @@
-﻿@using Umanhan.WebPortal.Spa.Pages
+﻿@using Blazored.LocalStorage
+@using Umanhan.WebPortal.Spa.Pages
 @inject NavigationManager Navigation
+@inject WebAppSetting Settings
+@inject ILocalStorageService LocalStorage
 
 <CascadingAuthenticationState>
-        <Router AppAssembly="@typeof(App).Assembly">
-            <Found Context="routeData">
-                <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
-                    <NotAuthorized>
-                        @* Unauthenticated or session not yet rehydrated *@
-                        @if (!context.User.Identity?.IsAuthenticated ?? true)
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @* Unauthenticated or session not yet rehydrated *@
+                    @if (!context.User.Identity?.IsAuthenticated ?? true)
+                    {
+                        @* Home page shows landing UI *@
+                        @if (routeData.PageType == typeof(Pages.Home))
                         {
-                            @* Home page shows landing UI *@
-                            @if (routeData.PageType == typeof(Pages.Home))
-                            {
-                                <LandingPage3 />
-                            }
-                            else
-                            {
-                                @* Any other protected route triggers a one-time RedirectToLogin component *@
-                                <RedirectToLogin />
-                            }
+                            <LandingPage3 />
                         }
                         else
                         {
-                            @* Authenticated but not authorized *@
-                            <LayoutView Layout="@typeof(MainLayout)">
-                                <Unauthorized />
-                            </LayoutView>
+                            @* Any other protected route triggers a one-time RedirectToLogin component *@
+                            <RedirectToLogin />
                         }
-                    </NotAuthorized>
-                </AuthorizeRouteView>
-                <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-            </Found>
-            <NotFound>
-                <PageTitle>Not Found</PageTitle>
-                <LayoutView Layout="@typeof(MainLayout)">
-                    <NotFound />
-                </LayoutView>
-            </NotFound>
-        </Router>
+                    }
+                    else
+                    {
+                        @* Authenticated but not authorized *@
+                        <LayoutView Layout="@typeof(MainLayout)">
+                            <Unauthorized />
+                        </LayoutView>
+                    }
+                </NotAuthorized>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Not Found</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <NotFound />
+            </LayoutView>
+        </NotFound>
+    </Router>
 </CascadingAuthenticationState>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Settings.InitializeLocalStorage(LocalStorage);
+    }
+}

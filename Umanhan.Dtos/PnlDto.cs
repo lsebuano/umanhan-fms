@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class PnlDto
+    public class PnlDto : BaseDto
     {
         public DateTime Period { get; set; }    // use month/year, or quarterly
         public decimal Revenue { get; set; }

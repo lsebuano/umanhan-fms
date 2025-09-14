@@ -45,6 +45,9 @@ namespace Umanhan.WebPortal.Spa
                         identity.AddClaim(new Claim("permission", p.Access));
 
                     identity.AddClaim(new Claim("dashboard_component", claimsInfo.DashboardComponent));
+                    identity.AddClaim(new Claim("farm_id", claimsInfo.FarmId));
+
+                    _http.DefaultRequestHeaders.Add("X-FarmId", claimsInfo.FarmId);
                 }
             }
 

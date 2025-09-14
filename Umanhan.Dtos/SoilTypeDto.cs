@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class SoilTypeDto
+    public class SoilTypeDto : BaseDto
     {
         public Guid SoilId { get; set; }
 

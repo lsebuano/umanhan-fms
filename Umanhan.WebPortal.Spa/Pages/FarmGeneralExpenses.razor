@@ -169,7 +169,7 @@
             </RadzenColumn>
         </RadzenRow>
         <RadzenRow>
-            <RadzenColumn SizeMD="8">
+            <RadzenColumn SizeMD="7">
                 <RadzenCard Variant="Variant.Flat">
                     <RadzenStack Orientation="Orientation.Vertical">
                         <RadzenDataGrid @ref="expensesGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="true" FilterMode="FilterMode.Advanced"
@@ -177,7 +177,7 @@
                                         ShowPagingSummary="true" Data="@expensesList" ColumnWidth="160px" LogicalFilterOperator="LogicalFilterOperator.Or"
                                         SelectionMode="DataGridSelectionMode.Single" EditMode="DataGridEditMode.Single" TItem="FarmGeneralExpenseDto"
                                         RowUpdate="@OnUpdateRowGrid" RowCreate="@OnCreateRowGrid" RowSelect="@OnRowSelect" Sort="@ResetGrid"
-                                        Filter="@ResetGrid" class="umh-height-50vh" >
+                                        Filter="@ResetGrid" class="umh-height-50vh">
                             <EmptyTemplate>
                                 <p class="umh-no-records">No records to display.</p>
                             </EmptyTemplate>
@@ -237,7 +237,7 @@
                     </RadzenStack>
                 </RadzenCard>
             </RadzenColumn>
-            <RadzenColumn SizeMD="4">
+            <RadzenColumn SizeMD="5">
                 @if (selectedObj != null)
                 {
                     <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
@@ -276,6 +276,9 @@
                                                 </RadzenFormField>
                                             </RadzenStack>
                                         }
+                                    </RadzenTabsItem>
+                                    <RadzenTabsItem Text="Receipts">
+                                        <FarmGeneralExpenseReceipts Model="@selectedObj" IsEditMode="@isEditMode" />
                                     </RadzenTabsItem>
                                 </Tabs>
                             </RadzenTabs>
@@ -352,22 +355,7 @@
         if (firstRender && !hasLoadedSecondaryData)
         {
             hasLoadedSecondaryData = true;
-            _ = Task.Run(async () =>
-            {
-                SetThisMonth();
-                //     await LoadList().ConfigureAwait(false);
-                //     await LoadKpis().ConfigureAwait(false);
-                await LoadExpenseTypes().ConfigureAwait(false);
-                await LoadList().ConfigureAwait(false);
-
-                await Task.Delay(3000);
-                await LoadKpis().ConfigureAwait(false);
-
-                await Task.Delay(2000);
-                await LoadCharts().ConfigureAwait(false);
-
-                InvokeAsync(StateHasChanged); // Safely update the UI after background work
-            });
+            LoadAnalytics();
         }
     }
 
@@ -375,6 +363,24 @@
     {
         farmId = Settings.FarmId;
         farmName = Settings.FarmName;
+    }
+
+    void LoadAnalytics()
+    {
+        _ = Task.Run(async () =>
+        {
+            SetThisMonth();
+            await LoadExpenseTypes().ConfigureAwait(false);
+            await LoadList().ConfigureAwait(false);
+
+            await Task.Delay(3000);
+            await LoadKpis().ConfigureAwait(false);
+
+            await Task.Delay(2000);
+            await LoadCharts().ConfigureAwait(false);
+
+            InvokeAsync(StateHasChanged); // Safely update the UI after background work
+        });
     }
 
     private async Task LoadList()
@@ -613,6 +619,7 @@
             expensesList.Add(expenseObj);
             ResetGrid();
             await NotificationService.ShowSuccess("Expense successfully created.");
+            LoadAnalytics();
         }
         else
         {
@@ -626,21 +633,7 @@
 
     async Task OnRowSelect(FarmGeneralExpenseDto expenseObj)
     {
-        //ResetGrid();
-
-        //Console.WriteLine("OnRowSelect: " + JsonSerializer.Serialize(expenseObj));
         selectedObj = expenseObj;
-        // if (expenseObj != null)
-        // {
-        //     var editContext = GetEditContext(expenseObj);
-        //     if (!stores.TryGetValue(editContext, out var store))
-        //     {
-        //         store = new ValidationMessageStore(editContext);
-        //         stores[editContext] = store;
-        //     }
-        //     store.Clear();
-        //     editContext.NotifyValidationStateChanged();
-        // }
     }
 
     bool ValidateRow(FarmGeneralExpenseDto expense)
@@ -681,10 +674,6 @@
 
         previousStartDate = startDate;
         previousEndDate = endDate;
-
-        //Console.WriteLine($"previousStartDate: {previousStartDate}");
-        //Console.WriteLine($"previousEndDate: {previousEndDate}");
-        //Console.WriteLine($"item.Value: {item.Value}");
 
         switch (item.Value)
         {
@@ -736,16 +725,9 @@
 
     async Task TryReloadList()
     {
-        //Console.WriteLine("TryReloadList");
         if (startDate != previousStartDate || endDate != previousEndDate)
         {
-            //Console.WriteLine("startDate != previousStartDate || endDate != previousEndDate");
-            //previousStartDate = startDate;
-            //previousEndDate = endDate;
-
             await LoadList().ConfigureAwait(false);
-            //await LoadKpis().ConfigureAwait(false);
-            //await LoadCharts().ConfigureAwait(false);
         }
     }
 
@@ -763,7 +745,6 @@
             ExpenseSummaryPrevious = expensesSummaryListPrevious
         };
         string jsonData = System.Text.Json.JsonSerializer.Serialize(data);
-        //Console.WriteLine($"OpenSideDialog.jsonData: {jsonData}");
 
         await DialogService.OpenSideAsync<DataInsightSideDialog>("Data Insight",
         parameters: new Dictionary<string, object>

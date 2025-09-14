@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class WeatherForecastDto
+    public class WeatherForecastDto : BaseDto
     {
         public Guid ForecastId { get; set; }
         public double? Lat { get; set; }

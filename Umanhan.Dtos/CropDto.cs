@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class CropDto
+    public class CropDto : BaseDto
     {
         public Guid CropId { get; set; }
 

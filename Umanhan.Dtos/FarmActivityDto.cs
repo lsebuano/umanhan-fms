@@ -3,7 +3,7 @@ using Umanhan.Shared;
 
 namespace Umanhan.Dtos
 {
-    public class FarmActivityDto
+    public class FarmActivityDto : BaseDto
     {
         public Guid ActivityId { get; set; }
 

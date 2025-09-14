@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class ProductPerformanceKpiDto
+    public class ProductPerformanceKpiDto : BaseDto
     {
         public string Product { get; set; }
         public string Variety { get; set; }

@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Umanhan.Dtos;
+using Umanhan.Dtos.HelperModels;
 using Umanhan.Services;
 
 namespace Umanhan.UserManager.Api.Endpoints
@@ -10,6 +11,7 @@ namespace Umanhan.UserManager.Api.Endpoints
     {
         private readonly RoleService _roleService;
         private readonly RolePermissionService _rolePermissionService;
+        private readonly SystemSettingService _systemSettingService;
         private readonly ILogger<ClaimEndpoints> _logger;
         private readonly IHttpContextAccessor _httpContextAccessor;
         //private readonly ICacheService _cacheService;
@@ -18,7 +20,8 @@ namespace Umanhan.UserManager.Api.Endpoints
         private const string MODULE_CACHE_TAG = "claim:all";
 
         public ClaimEndpoints(RoleService roleService, 
-            RolePermissionService rolePermissionService, 
+            RolePermissionService rolePermissionService,
+            SystemSettingService systemSettingService, 
             ILogger<ClaimEndpoints> logger, 
             IHttpContextAccessor httpContextAccessor
             //ICacheService cacheService
@@ -26,6 +29,7 @@ namespace Umanhan.UserManager.Api.Endpoints
         {
             _roleService = roleService;
             _rolePermissionService = rolePermissionService;
+            _systemSettingService = systemSettingService;
             _logger = logger;
             _httpContextAccessor = httpContextAccessor;
             //_cacheService = cacheService;
@@ -133,11 +137,20 @@ namespace Umanhan.UserManager.Api.Endpoints
                     permissions.AddRange(rolePermissions);
                 }
 
+                string farmId = "[unknown]";
+                var settingObj = await _systemSettingService.GetSystemSettingByNameAsync(SettingName.DEFAULT_FARM.ToString());
+                if (settingObj == null)
+                {
+                    _logger.LogError("Default farm setting is not configured.");                    
+                }
+                farmId = settingObj.SettingValue;
+
                 // 3. Assemble the user claims
                 var roleClaimObj = new RoleClaimDto
                 {
                     Permissions = permissions.Distinct(),
-                    DashboardComponent = validRoles.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.DashboardTemplateComponentName))?.DashboardTemplateComponentName ?? string.Empty
+                    DashboardComponent = validRoles.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x.DashboardTemplateComponentName))?.DashboardTemplateComponentName ?? string.Empty,
+                    FarmId = farmId
                 };
 
                 return Results.Ok(roleClaimObj);

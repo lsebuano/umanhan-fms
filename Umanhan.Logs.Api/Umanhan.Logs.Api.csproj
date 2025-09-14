@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Umanhan.Repositories\Umanhan.Repositories.csproj" />
     <ProjectReference Include="..\Umanhan.Services\Umanhan.Services.csproj" />
+    <ProjectReference Include="..\Umanhan.Shared\Umanhan.Shared.csproj" />
   </ItemGroup>
 
 </Project>

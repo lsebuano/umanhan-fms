@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class MonthlySalesDto
+    public class MonthlySalesDto : BaseDto
     {
         public DateTime Month { get; set; }
         public int MonthNumber => Month.Month;

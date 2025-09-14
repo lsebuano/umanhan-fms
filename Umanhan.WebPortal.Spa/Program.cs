@@ -1,5 +1,4 @@
 using Blazored.LocalStorage;
-//using Blazored.SessionStorage;
 using FluentValidation;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Authentication;
@@ -46,29 +45,28 @@ public class Program
 
         builder.Services.AddBlazoredLocalStorage();
 
-        WebAppSetting webAppSettings = new()
-        {
-            FarmId = Guid.Parse(builder.Configuration["Settings:FarmId"]),
-            CognitoDomain = builder.Configuration["Settings:CognitoDomain"],
-            CognitoClientId = builder.Configuration["Settings:CognitoClientId"],
-            CognitoAuthority = builder.Configuration["Settings:CognitoAuthority"],
-            CognitoMetadataUrl = builder.Configuration["Settings:CognitoMetadataUrl"],
-            CognitoResponseType = builder.Configuration["Settings:CognitoResponseType"],
-            CognitoRedirectUri = builder.Configuration["Settings:CognitoRedirectUri"],
-            CognitoReturnUrl = builder.Configuration["Settings:CognitoReturnUrl"],
+        WebAppSetting webAppSettings = new();
 
-            WebApiUrlOperations = builder.Configuration["Settings:WebApiUrlOperations"],
-            WebApiUrlMasterdata = builder.Configuration["Settings:WebApiUrlMasterdata"],
-            WebApiUrlWeather = builder.Configuration["Settings:WebApiUrlWeather"],
-            WebApiUrlNlp = builder.Configuration["Settings:WebApiUrlNlp"],
-            WebApiUrlUsers = builder.Configuration["Settings:WebApiUrlUsers"],
-            WebApiUrlReport = builder.Configuration["Settings:WebApiUrlReport"],
-            WebApiUrlLogs = builder.Configuration["Settings:WebApiUrlLogs"],
-            WebApiUrlSecrets = builder.Configuration["Settings:WebApiUrlSecrets"],
-            WebApiUrlSettings = builder.Configuration["Settings:WebApiUrlSettings"],
+        webAppSettings.FarmId = Guid.Parse(builder.Configuration["Settings:FarmId"]);
+        webAppSettings.CognitoDomain = builder.Configuration["Settings:CognitoDomain"];
+        webAppSettings.CognitoClientId = builder.Configuration["Settings:CognitoClientId"];
+        webAppSettings.CognitoAuthority = builder.Configuration["Settings:CognitoAuthority"];
+        webAppSettings.CognitoMetadataUrl = builder.Configuration["Settings:CognitoMetadataUrl"];
+        webAppSettings.CognitoResponseType = builder.Configuration["Settings:CognitoResponseType"];
+        webAppSettings.CognitoRedirectUri = builder.Configuration["Settings:CognitoRedirectUri"];
+        webAppSettings.CognitoReturnUrl = builder.Configuration["Settings:CognitoReturnUrl"];
 
-            GoogleMapsApiKey = builder.Configuration["Settings:GoogleMapsApiKey"]
-        };
+        webAppSettings.WebApiUrlOperations = builder.Configuration["Settings:WebApiUrlOperations"];
+        webAppSettings.WebApiUrlMasterdata = builder.Configuration["Settings:WebApiUrlMasterdata"];
+        webAppSettings.WebApiUrlWeather = builder.Configuration["Settings:WebApiUrlWeather"];
+        webAppSettings.WebApiUrlNlp = builder.Configuration["Settings:WebApiUrlNlp"];
+        webAppSettings.WebApiUrlUsers = builder.Configuration["Settings:WebApiUrlUsers"];
+        webAppSettings.WebApiUrlReport = builder.Configuration["Settings:WebApiUrlReport"];
+        webAppSettings.WebApiUrlLogs = builder.Configuration["Settings:WebApiUrlLogs"];
+        webAppSettings.WebApiUrlSecrets = builder.Configuration["Settings:WebApiUrlSecrets"];
+        webAppSettings.WebApiUrlSettings = builder.Configuration["Settings:WebApiUrlSettings"];
+
+        webAppSettings.GoogleMapsApiKey = builder.Configuration["Settings:GoogleMapsApiKey"];
 
         builder.Services.AddSingleton(webAppSettings);
 
@@ -123,6 +121,8 @@ public class Program
         builder.Services.AddScoped<FarmActivityPhotoService>();
         builder.Services.AddScoped<FarmGeneralExpenseService>();
         builder.Services.AddScoped<ContractPaymentService>();
+        builder.Services.AddScoped<QueryLogService>();
+        builder.Services.AddScoped<FarmGeneralExpenseReceiptService>();
 
         // validators
         builder.Services.AddScoped<IValidator<CategoryDto>, CategoryValidator>();
@@ -167,6 +167,7 @@ public class Program
         builder.Services.AddScoped<IValidator<FarmActivityPhotoDto>, FarmActivityPhotoValidator>();
         builder.Services.AddScoped<IValidator<FarmGeneralExpenseDto>, FarmGeneralExpenseValidator>();
         builder.Services.AddScoped<IValidator<PaymentDetailsDto>, PaymentDetailsValidator>();
+        builder.Services.AddScoped<IValidator<FarmGeneralExpenseReceiptDto>, FarmGeneralExpenseReceiptValidator>();
 
         // business:operations services
 
@@ -240,7 +241,7 @@ public class Program
         //var http2 = builder.Services.BuildServiceProvider().GetRequiredService<IHttpClientFactory>().CreateClient("MasterdataAPI");
         //var list = await http2.GetFromJsonAsync<IEnumerable<SystemSettingDto>>("/api/system-settings").ConfigureAwait(false);
         //var systemSettings = list?.ToDictionary(x => x.SettingName, x => x.SettingValue) ?? new Dictionary<string, string>();
-        var systemSettings = new List<SystemSettingDto>();
+        //var systemSettings = new List<SystemSettingDto>();
         //#if DEBUG
         //        systemSettings.Add(new SystemSettingDto
         //        {
@@ -249,7 +250,7 @@ public class Program
         //            SettingValue = "Loaded from on app start"
         //        });
         //#endif
-        builder.Services.AddSingleton(systemSettings);
+        //builder.Services.AddSingleton(systemSettings);
 
         builder.Services.AddOidcAuthentication(options =>
         {

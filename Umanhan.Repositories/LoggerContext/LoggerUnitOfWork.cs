@@ -1,12 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Umanhan.Models.LoggerEntities;
-using Umanhan.Repositories.Interfaces;
 using Umanhan.Repositories.LoggerContext.Interfaces;
 
 namespace Umanhan.Repositories.LoggerContext
@@ -15,6 +9,7 @@ namespace Umanhan.Repositories.LoggerContext
     {
         private readonly UmanhanLoggerDbContext _context;
         //public IChangeLogRepository ChangeLogs { get; private set; }
+        public IQueryLogRepository QueryLogs { get; private set; }
         public ILogRepository Logs { get; private set; }
         public IUserActivityRepository UserActivities { get; private set; }
 
@@ -22,6 +17,7 @@ namespace Umanhan.Repositories.LoggerContext
         {
             _context = context;
             //ChangeLogs = new ChangeLogRepository(_context);
+            QueryLogs = new QueryLogRepository(_context);
             Logs = new LogRepository(_context);
             UserActivities = new UserActivityRepository(_context);
         }

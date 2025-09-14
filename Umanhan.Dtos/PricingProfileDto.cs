@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class PricingProfileDto
+    public class PricingProfileDto : BaseDto
     {
         public Guid ProfileId { get; set; }
 

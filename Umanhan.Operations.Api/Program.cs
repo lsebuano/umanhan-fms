@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SendGrid;
+using System.Diagnostics;
 using Umanhan.Dtos;
 using Umanhan.Dtos.HelperModels;
 using Umanhan.Dtos.Validators;
@@ -19,6 +20,7 @@ using Umanhan.Repositories;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services;
 using Umanhan.Services.Interfaces;
+using Umanhan.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -31,6 +33,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpContextAccessor();
 
 //builder.Services.AddAWSService<IAmazonSimpleEmailService>();
 
@@ -57,11 +60,15 @@ builder.Services.AddValidatorsFromAssemblyContaining<FarmGeneralExpenseValidator
 builder.Services.AddFluentValidationAutoValidation();
 
 builder.Services.AddDbContextPool<UmanhanDbContext>(options =>
-    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING"), o =>
+    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? throw new InvalidOperationException("Missing CONNECTION_STRING"), o =>
     {
         // execution strategy
         o.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-    }));
+    })
+    .LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information)
+    .EnableSensitiveDataLogging()
+    .EnableDetailedErrors()
+);
 
 //builder.Services.AddSingleton<IAmazonSimpleEmailService, AmazonSimpleEmailServiceClient>();
 builder.Services.AddSingleton<ISendGridClient>(sp =>
@@ -136,6 +143,7 @@ builder.Services.AddScoped<QuotationService>();
 //builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<FarmActivityPhotoService>();
 builder.Services.AddScoped<FarmGeneralExpenseService>();
+builder.Services.AddScoped<FarmGeneralExpenseReceiptService>();
 
 // endpoints
 builder.Services.AddScoped<FarmLaborEndpoints>();
@@ -155,6 +163,7 @@ builder.Services.AddScoped<PricingProfileEndpoints>();
 builder.Services.AddScoped<QuotationEndpoints>();
 builder.Services.AddScoped<FarmActivityPhotoEndpoints>();
 builder.Services.AddScoped<FarmGeneralExpenseEndpoints>();
+builder.Services.AddScoped<FarmGeneralExpenseReceiptEndpoints>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -201,7 +210,6 @@ builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
 builder.Services.AddHttpClient();
 
-builder.Services.AddHttpContextAccessor();
 //builder.Services.AddAuthorization();
 builder.Services.AddAuthorization(options =>
 {
@@ -213,6 +221,18 @@ builder.Services.AddAuthorization(options =>
 });
 
 var app = builder.Build();
+
+// Resolve IHttpContextAccessor from final DI container
+var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+var connectionStringLogs = Environment.GetEnvironmentVariable("CONNECTION_STRING_LOGS")
+    ?? throw new InvalidOperationException("Missing CONNECTION_STRING_LOGS");
+
+// Create EF Query Logger
+var efQueryLogger = new EfCoreQueryLogger(connectionStringLogs, httpContextAccessor);
+
+// Subscribe to the **global EF Core listener**, not a new one
+var diagnosticObserver = new EfCoreDiagnosticObserver(efQueryLogger);
+DiagnosticListener.AllListeners.Subscribe(diagnosticObserver);
 
 // create email templates. this should be ran only once
 //#if DEBUG
@@ -556,23 +576,28 @@ farmContractSaleGroup.MapGet("/farm-id/{farmId}", ([FromServices] FarmContractSa
 
 var farmSalesGroup = app.MapGroup("/api/farm-sales");
 farmSalesGroup.MapGet("/farm-id/{farmId}", ([FromServices] FarmSalesEndpoints endpoint, Guid farmId) => endpoint.GetFarmSalesAsync(farmId))
-    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"),
+                  new RequiresPermissionAttribute("Cashier.Read"))
     .RequireAuthorization("Permission");
 
 farmSalesGroup.MapGet("/{id}", ([FromServices] FarmSalesEndpoints endpoint, Guid id) => endpoint.GetFarmSalesByIdAsync(id))
-    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"),
+                  new RequiresPermissionAttribute("Cashier.Read"))
     .RequireAuthorization("Permission");
 
 farmSalesGroup.MapGet("/recent/{farmId}", ([FromServices] FarmSalesEndpoints endpoint, Guid farmId) => endpoint.GetRecentFarmTransactionsAsync(farmId))
-    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"),
+                  new RequiresPermissionAttribute("Cashier.Read"))
     .RequireAuthorization("Permission");
 
 farmSalesGroup.MapPost("/", ([FromServices] FarmSalesEndpoints endpoint, FarmTransactionDto farmSales) => endpoint.CreateFarmSalesAsync(farmSales))
-    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"),
+                  new RequiresPermissionAttribute("Cashier.Write"))
     .RequireAuthorization("Permission");
 
 farmSalesGroup.MapPut("/{id}", ([FromServices] FarmSalesEndpoints endpoint, Guid id, FarmTransactionDto farmSales) => endpoint.UpdateFarmSalesAsync(id, farmSales))
-    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"),
+                  new RequiresPermissionAttribute("Cashier.Write"))
     .RequireAuthorization("Permission");
 
 farmSalesGroup.MapPut("/cancel-transaction/{id}", ([FromServices] FarmSalesEndpoints endpoint, Guid id) => endpoint.CancelTransactionAsync(id))
@@ -585,11 +610,13 @@ farmSalesGroup.MapDelete("/{id}", ([FromServices] FarmSalesEndpoints endpoint, G
 
 var farmProduceInventoryGroup = app.MapGroup("/api/produce");
 farmProduceInventoryGroup.MapGet("/{farmId}", ([FromServices] FarmProduceInventoryEndpoints endpoint, Guid farmId) => endpoint.GetFarmProduceInventoriesAsync(farmId))
-    .WithMetadata(new RequiresPermissionAttribute("Farm.Read"))
+    .WithMetadata(new RequiresPermissionAttribute("Farm.Read"),
+                  new RequiresPermissionAttribute("Cashier.Read"))
     .RequireAuthorization("Permission");
 
 farmProduceInventoryGroup.MapGet("/{farmId}/{typeId}", ([FromServices] FarmProduceInventoryEndpoints endpoint, Guid farmId, Guid typeId) => endpoint.GetFarmProduceInventoriesAsync(farmId, typeId))
-    .WithMetadata(new RequiresPermissionAttribute("Farm.Read"))
+    .WithMetadata(new RequiresPermissionAttribute("Farm.Read"),
+                  new RequiresPermissionAttribute("Cashier.Read"))
     .RequireAuthorization("Permission");
 
 var pricingProfileGroup = app.MapGroup("/api/pricing-profiles");
@@ -694,6 +721,32 @@ farmGeneralExpensesGroup.MapPut("/{id}", ([FromServices] FarmGeneralExpenseEndpo
     .RequireAuthorization("Permission");
 
 farmGeneralExpensesGroup.MapDelete("/{id}", ([FromServices] FarmGeneralExpenseEndpoints endpoint, Guid id) => endpoint.DeleteFarmGeneralExpenseAsync(id))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"))
+    .RequireAuthorization("Permission");
+
+
+var generalExpenseReceiptsGroup = app.MapGroup("/api/farm-general-expense-receipts");
+generalExpenseReceiptsGroup.MapGet("/{id}", ([FromServices] FarmGeneralExpenseReceiptEndpoints endpoint, Guid id) => endpoint.GetFarmGeneralExpenseReceiptByIdAsync(id))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"))
+    .RequireAuthorization("Permission");
+
+generalExpenseReceiptsGroup.MapGet("/general-expense/{generalExpenseId}", ([FromServices] FarmGeneralExpenseReceiptEndpoints endpoint, Guid generalExpenseId) => endpoint.GetFarmGeneralExpenseReceiptByGeneralExpenseAsync(generalExpenseId))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Read"))
+    .RequireAuthorization("Permission");
+
+generalExpenseReceiptsGroup.MapPost("/", ([FromServices] FarmGeneralExpenseReceiptEndpoints endpoint, FarmGeneralExpenseReceiptDto receipt) => endpoint.CreateFarmGeneralExpenseReceiptAsync(receipt))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"))
+    .RequireAuthorization("Permission");
+
+generalExpenseReceiptsGroup.MapPost("/upload", ([FromServices] FarmGeneralExpenseReceiptEndpoints endpoint, S3PhotoUploadDto obj) => endpoint.CreateFarmGeneralExpenseReceiptAsync(obj, s3BucketUrl))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"))
+    .RequireAuthorization("Permission");
+
+generalExpenseReceiptsGroup.MapPut("/{id}", ([FromServices] FarmGeneralExpenseReceiptEndpoints endpoint, Guid id, FarmGeneralExpenseReceiptDto receipt) => endpoint.UpdateFarmGeneralExpenseReceiptAsync(id, receipt))
+    .WithMetadata(new RequiresPermissionAttribute("Finance.Write"))
+    .RequireAuthorization("Permission");
+
+generalExpenseReceiptsGroup.MapDelete("/{id}", ([FromServices] FarmGeneralExpenseReceiptEndpoints endpoint, Guid id) => endpoint.DeleteFarmGeneralExpenseReceiptAsync(id))
     .WithMetadata(new RequiresPermissionAttribute("Finance.Write"))
     .RequireAuthorization("Permission");
 

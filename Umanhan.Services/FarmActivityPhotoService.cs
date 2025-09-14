@@ -71,7 +71,8 @@ namespace Umanhan.Services
                 MimeType = farmActivityPhoto.MimeType,
                 Notes = farmActivityPhoto.Notes,
                 PhotoUrlFull = farmActivityPhoto.PhotoUrlFull,
-                PhotoUrlThumbnail = farmActivityPhoto.PhotoUrlThumbnail
+                PhotoUrlThumbnail = farmActivityPhoto.PhotoUrlThumbnail,
+                Timestamp = DateTime.Now
             };
 
             try
@@ -97,6 +98,7 @@ namespace Umanhan.Services
             farmActivityPhotoEntity.Notes = farmActivityPhoto.Notes;
             farmActivityPhotoEntity.PhotoUrlFull = farmActivityPhoto.PhotoUrlFull;
             farmActivityPhotoEntity.PhotoUrlThumbnail = farmActivityPhoto.PhotoUrlThumbnail;
+            farmActivityPhotoEntity.Timestamp = DateTime.Now;
 
             try
             {

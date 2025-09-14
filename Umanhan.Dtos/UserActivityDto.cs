@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos;
 
-public class UserActivityDto
+public class UserActivityDto : BaseDto
 {
     public Guid UserActivityId { get; set; }
 

@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class S3PhotoUploadDto
+    public class S3PhotoUploadDto : BaseDto
     {
         public Guid ActivityId { get; set; }
         public string S3ObjectKey { get; set; }

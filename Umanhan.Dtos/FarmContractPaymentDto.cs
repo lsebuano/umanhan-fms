@@ -2,7 +2,7 @@
 
 namespace Umanhan.Dtos
 {
-    public class FarmContractPaymentDto
+    public class FarmContractPaymentDto : BaseDto
     {
         public Guid FarmId { get; set; }
         public string FarmName { get; set; }

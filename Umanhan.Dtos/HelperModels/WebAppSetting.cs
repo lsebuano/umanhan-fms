@@ -1,5 +1,6 @@
 ﻿
 using Blazored.LocalStorage;
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -7,15 +8,10 @@ namespace Umanhan.Dtos.HelperModels
 {
     public class WebAppSetting : INotifyPropertyChanged
     {
-        private readonly ILocalStorageService _localStorage;
+        private ILocalStorageService _localStorage;
         private const string StorageKey = "WebAppSetting";
 
         public WebAppSetting() { }
-
-        public WebAppSetting(ILocalStorageService localStorage)
-        {
-            _localStorage = localStorage;
-        }
 
         // Cognito settings
         private string _cognitoDomain;
@@ -110,6 +106,11 @@ namespace Umanhan.Dtos.HelperModels
                 $"&logout_uri={CognitoReturnUrl}";
         }
 
+        private async Task SaveAsync()
+        {
+            await _localStorage.SetItemAsync(StorageKey, this);
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         protected bool SetProperty<T>(ref T storage, T value, [CallerMemberName] string propertyName = null)
@@ -127,6 +128,9 @@ namespace Umanhan.Dtos.HelperModels
 
         public async Task LoadAsync()
         {
+            if (_localStorage == null)
+                throw new InvalidOperationException("LocalStorageService is not initialized. Call InitializeLocalStorage first.");
+
             var saved = await _localStorage.GetItemAsync<WebAppSetting>(StorageKey);
             if (saved != null)
             {
@@ -138,9 +142,9 @@ namespace Umanhan.Dtos.HelperModels
             }
         }
 
-        private async Task SaveAsync()
+        public void InitializeLocalStorage(ILocalStorageService localStorage)
         {
-            await _localStorage.SetItemAsync(StorageKey, this);
+            _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
         }
     }
 }

@@ -184,12 +184,12 @@
         DialogService.Close(Model);
     }
 
-    // protected override void OnParametersSet()
-    // {
-    //     Console.WriteLine(">>>>>>>>>>>>>OnParametersSet");
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($">>>>>>>>>>>>>EditAppointmentPageDialog:OnParametersSet:Model: {Model.ToString()}");
 
     //     // selectedProductTypeId = Model.ProductTypeId;
-    // }
+    }
 
     async Task GetProductFarmZone()
     {
@@ -270,6 +270,7 @@
 
         try
         {
+            Console.WriteLine($">>>>>>>>>>>>>EditAppointmentPageDialog:OnSubmit:Model: {model.ToString()}");
             var response = await FarmActivityService.UpdateFarmActivitiesAsync(model).ConfigureAwait(false);
             if (response == null)
             {

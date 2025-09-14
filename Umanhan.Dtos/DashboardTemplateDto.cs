@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos;
 
-public partial class DashboardTemplateDto
+public partial class DashboardTemplateDto : BaseDto
 {
     public Guid TemplateId { get; set; }
 

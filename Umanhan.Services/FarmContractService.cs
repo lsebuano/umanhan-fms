@@ -187,10 +187,9 @@ namespace Umanhan.Services
             {
                 // check the details first. only new details can be deleted
                 var details = farmContractEntity.FarmContractDetails;
-                if (details.All(d => d.Status.ToUpper() != ContractStatus.NEW.ToString()))
-                {
+                if ((details.Any() && details.All(d => d.Status.ToUpper() != ContractStatus.NEW.ToString())) ||
+                    farmContractEntity.Status.ToUpper() != ContractStatus.NEW.ToString())
                     throw new InvalidOperationException("Only contracts with NEW details can be deleted.");
-                }
 
                 var deletedFarmContract = await _unitOfWork.FarmContracts.DeleteAsync(id).ConfigureAwait(false);
                 await _unitOfWork.CommitAsync(_userContext.Username).ConfigureAwait(false);

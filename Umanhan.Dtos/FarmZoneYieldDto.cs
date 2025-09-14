@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class FarmZoneYieldDto
+    public class FarmZoneYieldDto : BaseDto
     {
         public Guid YieldId { get; set; }
 

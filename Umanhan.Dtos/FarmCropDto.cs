@@ -2,7 +2,7 @@
 
 namespace Umanhan.Dtos
 {
-    public class FarmCropDto
+    public class FarmCropDto : BaseDto
     {
         public Guid FarmCropId { get; set; }
 

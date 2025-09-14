@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class SystemSettingDto
+    public class SystemSettingDto : BaseDto
     {
         public Guid SettingId { get; set; }
 

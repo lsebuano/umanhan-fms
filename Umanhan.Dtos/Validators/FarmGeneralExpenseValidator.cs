@@ -12,9 +12,12 @@ namespace Umanhan.Dtos.Validators
             RuleFor(x => x.Date)
                 .NotEmpty().WithMessage("Date is required.");
 
+            //RuleFor(x => x.ExpenseTypeId)
+            //    .NotEmpty().WithMessage("Expense Type is required.")
+            //    .When(x => x.ExpenseTypeId != Guid.Empty);
+
             RuleFor(x => x.ExpenseTypeId)
-                .NotEmpty().WithMessage("Expense Type is required.")
-                .When(x => x.ExpenseTypeId != Guid.Empty);
+                .NotEmpty().WithMessage("Expense Type is required.");
 
             RuleFor(x => x.FarmId)
                 .NotEmpty().WithMessage("Farm is required.")

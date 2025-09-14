@@ -1,21 +1,19 @@
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Threading;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Diagnostics;
+using Umanhan.Models;
+using Umanhan.Models.Attributes;
 using Umanhan.Models.Models;
-using Umanhan.Services.Interfaces;
+using Umanhan.Repositories;
+using Umanhan.Repositories.Interfaces;
 using Umanhan.Services;
+using Umanhan.Services.Interfaces;
+using Umanhan.Shared;
 using Umanhan.Weather.Api;
 using Umanhan.Weather.Api.Endpoints;
-using Umanhan.Models.Attributes;
-using Umanhan.Repositories.Interfaces;
-using Umanhan.Repositories;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
-using Umanhan.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
@@ -25,14 +23,19 @@ builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi); // for AWS Lamb
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 
 builder.Services.AddDbContextPool<UmanhanDbContext>(options =>
-    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING"), o =>
+    options.UseNpgsql(Environment.GetEnvironmentVariable("CONNECTION_STRING") ?? throw new InvalidOperationException("Missing CONNECTION_STRING"), o =>
     {
         // execution strategy
         o.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-    }));
+    })
+    .LogTo(Console.WriteLine, new[] { DbLoggerCategory.Database.Command.Name }, LogLevel.Information)
+    .EnableSensitiveDataLogging()
+    .EnableDetailedErrors()
+);
 
 // repositories
 builder.Services.AddScoped(typeof(IRepository<>), typeof(UmanhanRepository<>));
@@ -86,7 +89,6 @@ builder.Services
 
 builder.Services.AddScoped<IAuthorizationHandler, PermissionHandler>();
 
-builder.Services.AddHttpContextAccessor();
 //builder.Services.AddAuthorization();
 builder.Services.AddAuthorization(options => {
     options.AddPolicy("Permission", policy =>
@@ -97,6 +99,18 @@ builder.Services.AddAuthorization(options => {
 });
 
 var app = builder.Build();
+
+// Resolve IHttpContextAccessor from final DI container
+var httpContextAccessor = app.Services.GetRequiredService<IHttpContextAccessor>();
+var connectionStringLogs = Environment.GetEnvironmentVariable("CONNECTION_STRING_LOGS")
+    ?? throw new InvalidOperationException("Missing CONNECTION_STRING_LOGS");
+
+// Create EF Query Logger
+var efQueryLogger = new EfCoreQueryLogger(connectionStringLogs, httpContextAccessor);
+
+// Subscribe to the **global EF Core listener**, not a new one
+var diagnosticObserver = new EfCoreDiagnosticObserver(efQueryLogger);
+DiagnosticListener.AllListeners.Subscribe(diagnosticObserver);
 
 // Configure the HTTP request pipeline.
 app.UsePathBase(apiPathBase);

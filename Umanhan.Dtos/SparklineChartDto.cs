@@ -1,6 +1,6 @@
 ﻿namespace Umanhan.Dtos
 {
-    public class SparklineChartDto
+    public class SparklineChartDto : BaseDto
     {
         public DateOnly Date { get; set; }
         public decimal Total { get; set; }

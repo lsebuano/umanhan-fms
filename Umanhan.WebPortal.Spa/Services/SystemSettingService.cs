@@ -10,14 +10,12 @@ namespace Umanhan.WebPortal.Spa.Services
     {
         private readonly ApiService _apiService;
         private bool _isLoaded = false;
-        private List<SystemSettingDto> _systemSettings;
 
         private Dictionary<string, JsonElement> Settings { get; set; } = [];
 
-        public SystemSettingService(ApiService apiService, List<SystemSettingDto> systemSettings)
+        public SystemSettingService(ApiService apiService)
         {
             _apiService = apiService;
-            _systemSettings = systemSettings;
         }
 
         public Task<ApiResponse<IEnumerable<SystemSettingDto>>> GetAllSystemSettingsAsync()
