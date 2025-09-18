@@ -59,7 +59,7 @@ namespace Umanhan.WebPortal.Spa.Services
                 filename = Uri.EscapeDataString(filename);
                 contentType = Uri.EscapeDataString(contentType);
 
-                return _apiService.GetAsync<string>("OperationsAPI", $"api/farm-inventories/presigned-url/{filename}/{contentType}");
+                return _apiService.GetAsync<string>("OperationsAPI", $"api/farm-inventories/presigned-url/{filename}?contentType={contentType}");
             }
             catch (Exception ex)
             {
@@ -154,7 +154,7 @@ namespace Umanhan.WebPortal.Spa.Services
                 string filename = Uri.EscapeDataString($"{Guid.NewGuid()}{extension}");
                 string contentType = Uri.EscapeDataString(ct);
 
-                var response = await _apiService.GetAsync<Dictionary<string, string>>("OperationsAPI", $"api/farm-inventories/presigned-url/{filename}/{contentType}").ConfigureAwait(false);
+                var response = await _apiService.GetAsync<Dictionary<string, string>>("OperationsAPI", $"api/farm-inventories/presigned-url/{filename}?contentType={contentType}").ConfigureAwait(false);
                 if (response.IsSuccess)
                 {
                     return response.Data;
@@ -185,11 +185,6 @@ namespace Umanhan.WebPortal.Spa.Services
                 }
 
                 var content = file.OpenReadStream(maxAllowedSizeInBytes);
-                //return await _apiService.PutStreamAsync<bool>("OperationsAPI", $"api/farm-inventories/upload-file/{filename}", content, file.ContentType, headers);
-                //var response = await _apiService.GetAsync<string>("OperationsAPI", $"api/farm-inventories/presigned-url/{filename}").ConfigureAwait(false);
-                //if (response.IsSuccess)
-                //{
-                //var presignedUrl = response.Data;
                 using var contentStream = new StreamContent(content);
                 contentStream.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
 
@@ -211,11 +206,6 @@ namespace Umanhan.WebPortal.Spa.Services
                 {
                     return ApiResponse<bool>.Failure("File Upload Failed", "Failed to upload file to S3.");
                 }
-                //}
-                //else
-                //{
-                //    return ApiResponse<bool>.Failure("Presigned URL Error", "Failed to get presigned URL for file upload.");
-                //}
             }
             catch (Exception ex)
             {

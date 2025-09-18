@@ -3,6 +3,7 @@ using Umanhan.Dtos;
 using Umanhan.Models.Entities;
 using Umanhan.Repositories.Interfaces;
 using Umanhan.Services.Interfaces;
+using Umanhan.Shared.Model;
 
 namespace Umanhan.Services
 {
@@ -52,12 +53,17 @@ namespace Umanhan.Services
             };
         }
 
-        public async Task<IEnumerable<ChangeLogDto>> GetChangeLogsAsync(DateTime date)
+        public async Task<PagedResult<ChangeLogDto>> GetChangeLogsAsync(DateTime date, int pageNumber = 1, int pageSize = 20)
         {
-            var obj = await _unitOfWork.ChangeLogs.GetLogsAsync(date).ConfigureAwait(false);
-            if (obj == null)
-                return null;
-            return ToLogDto(obj);
+            var pagedList = await _unitOfWork.ChangeLogs.GetLogsAsync(date, pageNumber, pageSize).ConfigureAwait(false);
+            var dtoItems = ToLogDto(pagedList.Items);
+            return new PagedResult<ChangeLogDto>
+            {
+                Items = dtoItems,
+                TotalCount = pagedList.TotalCount,
+                PageNumber = pagedList.PageNumber,
+                PageSize = pagedList.PageSize
+            };
         }
 
         public async Task<ChangeLogDto> GetChangeLogByIdAsync(Guid id)

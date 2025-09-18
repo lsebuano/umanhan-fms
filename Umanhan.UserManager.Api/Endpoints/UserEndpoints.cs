@@ -16,7 +16,7 @@ namespace Umanhan.UserManager.Api.Endpoints
 
         private const string MODULE_CACHE_KEY = "user";
 
-        public UserEndpoints(RoleService roleService, 
+        public UserEndpoints(RoleService roleService,
             ILogger<UserEndpoints> logger,
             IEmailService emailService)
         {

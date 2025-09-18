@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System;
@@ -153,7 +154,7 @@ app.Use(async (context, next) =>
 });
 
 var changeLogGroup = app.MapGroup("/api/change-logs");
-changeLogGroup.MapGet("/date/{date}", (ChangeLogEndpoints endpoint, DateTime date) => endpoint.GetChangeLogsAsync(date))
+changeLogGroup.MapGet("/date/{date}/{pageNumber}/{pageSize}", ([FromServices] ChangeLogEndpoints endpoint, DateTime date, int pageNumber, int pageSize) => endpoint.GetChangeLogsAsync(date, pageNumber, pageSize))
     .WithMetadata(new RequiresPermissionAttribute("Log.Read"))
     .RequireAuthorization("Permission");
 
@@ -163,7 +164,7 @@ changeLogGroup.MapGet("/{id}", (ChangeLogEndpoints endpoint, Guid id) => endpoin
 
 
 var queryLogGroup = app.MapGroup("/api/query-logs");
-queryLogGroup.MapGet("/date/{date}", (QueryLogEndpoints endpoint, DateTime date) => endpoint.GetQueryLogsAsync(date))
+queryLogGroup.MapGet("/date/{date}/{pageNumber}/{pageSize}", ([FromServices] QueryLogEndpoints endpoint, DateTime date, int pageNumber, int pageSize) => endpoint.GetQueryLogsAsync(date, pageNumber, pageSize))
     .WithMetadata(new RequiresPermissionAttribute("Log.Read"))
     .RequireAuthorization("Permission");
 

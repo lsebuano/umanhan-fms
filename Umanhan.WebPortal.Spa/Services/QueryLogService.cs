@@ -1,5 +1,6 @@
 ﻿using Umanhan.Dtos;
 using Umanhan.Dtos.HelperModels;
+using Umanhan.Shared.Model;
 
 namespace Umanhan.WebPortal.Spa.Services
 {
@@ -12,11 +13,11 @@ namespace Umanhan.WebPortal.Spa.Services
             _apiService = apiService;
         }
 
-        public Task<ApiResponse<IEnumerable<QueryLogDto>>> GetQueryLogsAsync(DateOnly date)
+        public Task<ApiResponse<PagedResult<QueryLogDto>>> GetQueryLogsAsync(DateOnly date, int pageNumber, int pageSize)
         {
             try
             {
-                return _apiService.GetAsync<IEnumerable<QueryLogDto>>("LogsAPI", $"api/query-logs/date/{date:yyyy-MM-dd}");
+                return _apiService.GetAsync<PagedResult<QueryLogDto>>("LogsAPI", $"api/query-logs/date/{date:yyyy-MM-dd}/{pageNumber}/{pageSize}");
             }
             catch (Exception ex)
             {

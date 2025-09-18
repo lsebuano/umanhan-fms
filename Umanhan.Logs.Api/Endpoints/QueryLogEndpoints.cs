@@ -13,11 +13,11 @@ namespace Umanhan.Logs.Api.Endpoints
             _logger = logger;
         }
 
-        public async Task<IResult> GetQueryLogsAsync(DateTime date)
+        public async Task<IResult> GetQueryLogsAsync(DateTime date, int pageNumber = 1, int pageSize = 20)
         {
             try
             {
-                var logs = await _queryLogService.GetQueryLogsAsync(date).ConfigureAwait(false);
+                var logs = await _queryLogService.GetQueryLogsAsync(date, pageNumber, pageSize).ConfigureAwait(false);
                 return Results.Ok(logs);
             }
             catch (Exception ex)

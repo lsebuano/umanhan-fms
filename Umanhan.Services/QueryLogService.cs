@@ -3,6 +3,8 @@ using Umanhan.Dtos;
 using Umanhan.Models.LoggerEntities;
 using Umanhan.Repositories.LoggerContext.Interfaces;
 using Umanhan.Services.Interfaces;
+using Umanhan.Shared.Model;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace Umanhan.Services
 {
@@ -60,12 +62,17 @@ namespace Umanhan.Services
             };
         }
 
-        public async Task<IEnumerable<QueryLogDto>> GetQueryLogsAsync(DateTime date)
+        public async Task<PagedResult<QueryLogDto>> GetQueryLogsAsync(DateTime date, int pageNumber = 1, int pageSize = 20)
         {
-            var obj = await _unitOfWork.QueryLogs.GetLogsAsync(date).ConfigureAwait(false);
-            if (obj == null)
-                return null;
-            return ToLogDto(obj);
+            var pagedList = await _unitOfWork.QueryLogs.GetLogsAsync(date, pageNumber, pageSize).ConfigureAwait(false);
+            var dtoItems = ToLogDto(pagedList.Items);
+            return new PagedResult<QueryLogDto>
+            {
+                Items = dtoItems,
+                TotalCount = pagedList.TotalCount,
+                PageNumber = pagedList.PageNumber,
+                PageSize = pagedList.PageSize
+            };
         }
 
         public async Task<QueryLogDto> GetQueryLogByIdAsync(Guid id)

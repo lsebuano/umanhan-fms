@@ -13,77 +13,71 @@
         </RadzenBreadCrumb>
         <RadzenText TextStyle="TextStyle.H5" class="rz-my-8">Query Logs</RadzenText>
 
-        @if (objList == null)
-        {
-            <p>Loading...</p>
-        }
-        else
-        {
-            <RadzenRow>
-                <RadzenColumn Size="12" SizeMD="7">
-                    <div class="full-height-container">
-                        <RadzenDataGrid AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced"
-                                        AllowSorting="true" PageSize="10" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left"
-                                        Data="@objList" TItem="QueryLogDto" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" ShowPagingSummary="true"
-                                        IsLoading=@isLoading Sort="@ShowLoading" Page="@ShowLoading" Group="@ShowLoading" Filter="@ShowLoading" class="umh-height-70vh"
-                                        @bind-Value=@selectedObjList SelectionMode="DataGridSelectionMode.Single">
-                            <EmptyTemplate>
-                                <p class="umh-no-records">No records to display.</p>
-                            </EmptyTemplate>
-                            <HeaderTemplate>
-                                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Start" AlignItems="AlignItems.Center" Gap="0.5rem" class="">
-                                    <RadzenLabel Text="Select Date" Component="DateFilter" />
-                                    <RadzenDatePicker @bind-Value=@date Name="DateFilter" ShowCalendarWeek ShowTime=false CurrentDateChanged="@OnDateFilterQuery" ShowDays=false DateFormat="MMM yyyy" />
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="7">
+                <div class="full-height-container">
+                    <RadzenDataGrid AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced"
+                                    PageSize="20" PagerHorizontalAlign="HorizontalAlign.Left"
+                                    class="umh-height-70vh" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or" ShowPagingSummary="true"
+                                    SelectionMode="DataGridSelectionMode.Single" @bind-Value=@selectedObjList
+                                    LoadData="@LoadData" Count="@totalCount" @ref="queryLogsGrid" IsLoading=@isLoading Data="@objList" AllowSorting="true" 
+                                    AllowFiltering="true" AllowPaging="true">
+                        <EmptyTemplate>
+                            <p class="umh-no-records">No records to display.</p>
+                        </EmptyTemplate>
+                        <HeaderTemplate>
+                            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Start" AlignItems="AlignItems.Center" Gap="0.5rem" class="">
+                                <RadzenLabel Text="Select Date" Component="DateFilter" />
+                                <RadzenDatePicker @bind-Value=@date Name="DateFilter" ShowCalendarWeek ShowTime=false CurrentDateChanged="@OnDateFilterQuery" ShowDays=false DateFormat="MMM yyyy" />
+                            </RadzenStack>
+                        </HeaderTemplate>
+                        <Columns>
+                            <RadzenDataGridColumn Property="@nameof(QueryLogDto.CreatedAt)" Title="Created At" Frozen="false" Width="150px" />
+                            <RadzenDataGridColumn Property="@nameof(QueryLogDto.FarmId)" Title="Farm" Frozen="false" Width="150px" />
+                            <RadzenDataGridColumn Property="@nameof(QueryLogDto.ApiEndpoint)" Title="API Endpoint" Frozen="false" Width="300px" />
+                            <RadzenDataGridColumn Property="@nameof(QueryLogDto.HttpMethod)" Title="HTTP Method" Frozen="false" Width="100px" />
+                            <RadzenDataGridColumn Property="@nameof(QueryLogDto.DurationMs)" Title="Duration (ms)" Frozen="false" Width="100px" />
+                        </Columns>
+                    </RadzenDataGrid>
+                </div>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="5">
+                <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
+                    <RadzenTabs>
+                        <Tabs>
+                            <RadzenTabsItem Text="Details">
+                                <RadzenStack Gap="1rem">
+                                    <RadzenCard Variant="Variant.Text">
+                                        <RadzenStack Gap="0">
+                                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Correlation ID</RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body1">@(selectedObjList.FirstOrDefault()?.CorrelationId)</RadzenText>
+
+                                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Query</RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Query)</RadzenText>
+
+                                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Parameters</RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Parameters)</RadzenText>
+
+                                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Rows Returned</RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.RowsReturned)</RadzenText>
+
+                                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">User ID</RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.UserId)</RadzenText>
+
+                                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Source</RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Source)</RadzenText>
+
+                                            <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Environment</RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Environment)</RadzenText>
+                                        </RadzenStack>
+                                    </RadzenCard>
                                 </RadzenStack>
-                            </HeaderTemplate>
-                            <Columns>
-                                <RadzenDataGridColumn Property="@nameof(QueryLogDto.CreatedAt)" Title="Created At" Frozen="false" Width="150px" />
-                                <RadzenDataGridColumn Property="@nameof(QueryLogDto.FarmId)" Title="Farm" Frozen="false" Width="150px" />
-                                <RadzenDataGridColumn Property="@nameof(QueryLogDto.ApiEndpoint)" Title="API Endpoint" Frozen="false" Width="300px" />
-                                <RadzenDataGridColumn Property="@nameof(QueryLogDto.HttpMethod)" Title="HTTP Method" Frozen="false" Width="100px" />
-                                <RadzenDataGridColumn Property="@nameof(QueryLogDto.DurationMs)" Title="Duration (ms)" Frozen="false" Width="100px" />
-                            </Columns>
-                        </RadzenDataGrid>
-                    </div>
-                </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="5">
-                     <RadzenCard Variant="Variant.Outlined" class="umh-height-100">
-                        <RadzenTabs>
-                            <Tabs>
-                                <RadzenTabsItem Text="Details">
-                                    <RadzenStack Gap="1rem">
-                                        <RadzenCard Variant="Variant.Text">
-                                            <RadzenStack Gap="0">
-                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Correlation ID</RadzenText>
-                                                <RadzenText TextStyle="TextStyle.Body1">@(selectedObjList.FirstOrDefault()?.CorrelationId)</RadzenText>
-
-                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Query</RadzenText>
-                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Query)</RadzenText>
-
-                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Parameters</RadzenText>
-                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Parameters)</RadzenText>
-
-                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Rows Returned</RadzenText>
-                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.RowsReturned)</RadzenText>
-
-                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">User ID</RadzenText>
-                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.UserId)</RadzenText>
-
-                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Source</RadzenText>
-                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Source)</RadzenText>
-
-                                                <RadzenText TextStyle="TextStyle.Overline" class="rz-display-flex rz-mt-5">Environment</RadzenText>
-                                                <RadzenText TextStyle="TextStyle.Body2">@(selectedObjList.FirstOrDefault()?.Environment)</RadzenText>
-                                            </RadzenStack>
-                                        </RadzenCard>
-                                    </RadzenStack>
-                                </RadzenTabsItem>
-                            </Tabs>
-                        </RadzenTabs>
-                    </RadzenCard> 
-                </RadzenColumn>
-            </RadzenRow>
-        }
+                            </RadzenTabsItem>
+                        </Tabs>
+                    </RadzenTabs>
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
     </ChildContent>
     <NotAuthorized>
         <Unauthorized />
@@ -94,15 +88,15 @@
     RadzenDataGrid<QueryLogDto> queryLogsGrid;
 
     private IEnumerable<QueryLogDto>? objList;
-    private IList<QueryLogDto> selectedObjList;
-    private bool isLoading;
+    private IList<QueryLogDto> selectedObjList = new List<QueryLogDto>();
     private DateOnly date = DateOnly.FromDateTime(DateTime.Now);
+    private bool isLoading;
+    private int totalCount = 0;
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync().ConfigureAwait(false);
         await ShowLoading().ConfigureAwait(false);
-        await LoadList().ConfigureAwait(false);
     }
 
     private async Task ShowLoading()
@@ -112,26 +106,34 @@
         isLoading = false;
     }
 
-    private async Task LoadList(Guid? queryId = null)
+    async Task LoadData(LoadDataArgs args)
     {
-        var response = await QueryLogService.GetQueryLogsAsync(date).ConfigureAwait(false);
-        if (response.IsSuccess)
+        isLoading = true;
+
+        try
         {
-            objList = response.Data;
-            if (queryId != null || queryId != Guid.Empty)
+            int pageNumber = ((args.Skip / args.Top) + 1) ?? 1;
+            int pageSize = args.Top ?? 20;
+
+            var response = await QueryLogService.GetQueryLogsAsync(date, pageNumber, pageSize).ConfigureAwait(false);
+            if (response.IsSuccess)
+            {
+                objList = response.Data?.Items ?? Enumerable.Empty<QueryLogDto>();
+                totalCount = response.Data?.TotalCount ?? 0;
+
                 selectedObjList = new List<QueryLogDto>() { objList.FirstOrDefault() };
-            else
-                selectedObjList = new List<QueryLogDto>() { objList.FirstOrDefault(x => x.QueryId == queryId) };
+            }
         }
-        else
+        finally
         {
-            await NotificationService.ShowError(response.ErrorMessage, response.ErrorTitle);
+            isLoading = false;
         }
     }
 
     async Task OnDateFilterQuery(DateTime args)
     {
         date = new DateOnly(args.Year, args.Month, 1);
-        await LoadList().ConfigureAwait(false);
+        // Reset grid to first page and trigger LoadData
+        await queryLogsGrid.FirstPage(true);
     }
 }

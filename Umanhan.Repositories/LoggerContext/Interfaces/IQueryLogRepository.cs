@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Umanhan.Models.Entities;
-using Umanhan.Models.LoggerEntities;
+﻿using Umanhan.Models.LoggerEntities;
 using Umanhan.Repositories.Interfaces;
+using Umanhan.Shared.Model;
 
 namespace Umanhan.Repositories.LoggerContext.Interfaces
 {
     public interface IQueryLogRepository : IRepository<EfQueryLog>
     {
         // add new methods specific to this repository
-        Task<IEnumerable<EfQueryLog>> GetLogsAsync(DateTime date);
+        Task<PagedResult<EfQueryLog>> GetLogsAsync(DateTime date, int pageNumber = 1, int pageSize = 20);
     }
 }

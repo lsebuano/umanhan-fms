@@ -473,7 +473,7 @@ farmInventoryGroup.MapGet("/{id}", ([FromServices] FarmInventoryEndpoints endpoi
     .WithMetadata(new RequiresPermissionAttribute("Farm.Read"))
     .RequireAuthorization("Permission");
 
-farmInventoryGroup.MapGet("/presigned-url/{filename}/{contentType}", ([FromServices] FarmInventoryEndpoints endpoint, string filename, string contentType) => endpoint.GetS3PresignedUrlAsync(photosBucketName, filename, contentType))
+farmInventoryGroup.MapGet("/presigned-url/{filename}", ([FromServices] FarmInventoryEndpoints endpoint, string filename, [FromQuery] string contentType) => endpoint.GetS3PresignedUrlAsync(photosBucketName, filename, contentType))
     .WithMetadata(new RequiresPermissionAttribute("Farm.Write"))
     .RequireAuthorization("Permission");
 

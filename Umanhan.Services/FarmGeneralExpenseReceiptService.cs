@@ -72,7 +72,6 @@ namespace Umanhan.Services
                 Notes = farmGeneralExpenseReceipt.Notes,
                 ReceiptUrlFull = farmGeneralExpenseReceipt.ReceiptUrlFull,
                 ReceiptUrlThumbnail = farmGeneralExpenseReceipt.ReceiptUrlThumbnail,
-                Timestamp = DateTime.Now
             };
 
             try
@@ -98,7 +97,6 @@ namespace Umanhan.Services
             farmGeneralExpenseReceiptEntity.Notes = farmGeneralExpenseReceipt.Notes;
             farmGeneralExpenseReceiptEntity.ReceiptUrlFull = farmGeneralExpenseReceipt.ReceiptUrlFull;
             farmGeneralExpenseReceiptEntity.ReceiptUrlThumbnail = farmGeneralExpenseReceipt.ReceiptUrlThumbnail;
-            farmGeneralExpenseReceiptEntity.Timestamp = DateTime.Now;
 
             try
             {
